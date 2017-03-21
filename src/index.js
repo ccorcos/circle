@@ -67,8 +67,8 @@ var sketch = p => {
     // const speed = p.mouseX / WIDTH * 0.1;
     const speed = random(0.01, 0.03);
 
+    // const x = 0.5;
     const x = p.mouseX / WIDTH || 0.5;
-    // const x = Math.sin(tick) * WIDTH;
     const arms = Math.ceil(x * (FRACTION / 2));
 
     const y = p.mouseY / HEIGHT || 0.5;
