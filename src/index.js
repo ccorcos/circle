@@ -12,6 +12,17 @@ root.style.justifyContent = "center";
 root.style.cursor = "none";
 document.body.appendChild(root);
 
+const link = document.createElement("a");
+link.href = "https://github.com/ccorcos/spiral";
+link.style.position = "absolute";
+link.style.bottom = 0;
+link.style.right = 0;
+link.style.color = "white";
+link.style.padding = "4px 8px";
+link.style.fontFamily = "sans-serif";
+link.text = "source";
+document.body.appendChild(link);
+
 // helper functions
 const range = (min, max, step) =>
   Array(Math.round((max - min) / step)).fill(0).map((_, i) => i * step + min);
