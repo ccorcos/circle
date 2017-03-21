@@ -11,11 +11,6 @@
   "keywords": [],
   "author": "Chet Corcos <ccorcos@gmail.com> (http://www.chetcorcos.com/)",
   "license": "ISC",
-  "dependencies": {
-    "glamor": "^2.20.24",
-    "react": "^15.4.2",
-    "react-dom": "^15.4.2"
-  },
   "devDependencies": {
     "babel-core": "^6.24.0",
     "babel-loader": "^6.4.1",
@@ -25,5 +20,8 @@
     "html-webpack-plugin": "^2.28.0",
     "webpack": "^2.2.1",
     "webpack-dev-server": "^2.4.2"
+  },
+  "dependencies": {
+    "p5": "^0.5.7"
   }
 }
