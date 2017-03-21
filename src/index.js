@@ -1,5 +1,3 @@
-// inspiration:
-// http://i.imgur.com/7YNW1p0.gifv
 import p5 from "p5";
 
 // create the container with the canvas centered on the page
