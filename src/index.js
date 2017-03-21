@@ -1,3 +1,5 @@
+// inspiration:
+// http://i.imgur.com/7YNW1p0.gifv
 import p5 from "p5";
 
 // create the container with the canvas centered on the page
@@ -16,6 +18,8 @@ const pipe = (init, fns) => fns.reduce((value, fn) => fn(value), init);
 
 const map = fn => list => list.map(fn);
 
+const random = (min, max) => Math.random() * (max - min) + min;
+
 // the main sketch
 var sketch = p => {
   // size of the canvas
@@ -33,10 +37,10 @@ var sketch = p => {
 
   let tick = 0.0;
 
-  const START = [Math.random() * p.TAU, Math.random() * p.TAU];
+  const START = [random(0, p.TAU), random(0, p.TAU)];
 
   // rotations per period?
-  const RPP = [4 + Math.random() * 0.5, 4.5 + Math.random() * 0.5];
+  const RPP = [random(4, 4.5), random(4.5, 5)];
 
   p.draw = () => {
     p.background(51);
@@ -45,12 +49,14 @@ var sketch = p => {
     p.strokeWeight(5);
 
     // const speed = p.mouseX / EDGE * 0.1;
-    const speed = 0.01 + Math.random() * 0.02;
+    const speed = random(0.01, 0.03);
 
-    const arms = Math.floor(p.mouseX / EDGE * (FRACTION / 2));
+    const x = p.mouseX;
+    // const x = Math.sin(tick) * EDGE;
+    const arms = Math.ceil(x / EDGE * (FRACTION / 2 - 1));
 
-    // const arc = p.TAU / 3;
-    const arc = p.mouseY / EDGE * p.TAU;
+    const y = p.mouseY;
+    const arc = y / EDGE * p.TAU;
 
     for (let i = 0; i < arms; i++) {
       p.push();
