@@ -24,9 +24,8 @@ var sketch = p => {
   const RADIUS = EDGE / 6;
   const WIDTH = RADIUS * 2;
   const HEIGHT = RADIUS * 2;
-  const ARC = p.TAU / 3;
-  const OFFSET = p.TAU / 40;
-  const ARMS = 7;
+  const FRACTION = 40;
+  const OFFSET = p.TAU / FRACTION;
 
   p.setup = () => {
     p.createCanvas(EDGE, EDGE);
@@ -36,35 +35,40 @@ var sketch = p => {
 
   const START = [Math.random() * p.TAU, Math.random() * p.TAU];
 
+  // rotations per period?
+  const RPP = [4 + Math.random() * 0.5, 4.5 + Math.random() * 0.5];
+
   p.draw = () => {
     p.background(51);
     p.noFill();
     p.stroke(255);
     p.strokeWeight(5);
 
-    // const x = p.mouseX / EDGE - 0.5;
-    const speed = 0.02;
+    // const speed = p.mouseX / EDGE * 0.1;
+    const speed = 0.01 + Math.random() * 0.02;
 
-    // rotations per period
-    const RPP = [p.mouseX / EDGE * 5 + 1, p.mouseY / EDGE * 5 + 1];
+    const arms = Math.floor(p.mouseX / EDGE * (FRACTION / 2));
 
-    for (let i = 0; i < ARMS; i++) {
+    // const arc = p.TAU / 3;
+    const arc = p.mouseY / EDGE * p.TAU;
+
+    for (let i = 0; i < arms; i++) {
       p.push();
       p.translate(CENTER, CENTER);
       p.rotate(i * OFFSET);
       p.rotate(Math.sin(tick / RPP[0] + START[0]) * RPP[0]);
-      p.arc(-RADIUS, 0, WIDTH, HEIGHT, 0, ARC);
-      p.arc(+RADIUS, 0, WIDTH, HEIGHT, p.PI, p.PI + ARC);
+      p.arc(-RADIUS, 0, WIDTH, HEIGHT, 0, arc);
+      p.arc(+RADIUS, 0, WIDTH, HEIGHT, p.PI, p.PI + arc);
       p.pop();
     }
 
-    for (let i = 0; i < ARMS; i++) {
+    for (let i = 0; i < arms; i++) {
       p.push();
       p.translate(CENTER, CENTER);
       p.rotate(i * OFFSET);
       p.rotate(Math.sin(tick / RPP[1] + START[1]) * RPP[1]);
-      p.arc(-RADIUS, 0, WIDTH, HEIGHT, -ARC, 0);
-      p.arc(+RADIUS, 0, WIDTH, HEIGHT, p.PI - ARC, p.PI);
+      p.arc(-RADIUS, 0, WIDTH, HEIGHT, -arc, 0);
+      p.arc(+RADIUS, 0, WIDTH, HEIGHT, p.PI - arc, p.PI);
       p.pop();
     }
     tick += speed;
