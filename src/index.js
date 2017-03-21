@@ -11,6 +11,7 @@ root.style.left = 0;
 root.style.right = 0;
 root.style.display = "flex";
 root.style.justifyContent = "center";
+root.style.cursor = "none";
 document.body.appendChild(root);
 
 // helper functions
@@ -51,18 +52,18 @@ var sketch = p => {
   p.draw = () => {
     p.background(51);
     p.noFill();
-    p.stroke(255);
-    p.strokeWeight(5);
+    p.stroke(255, 255, 255, 255 * 1.0);
+    p.strokeWeight(3);
 
     // const speed = p.mouseX / WIDTH * 0.1;
     const speed = random(0.01, 0.03);
 
-    const x = p.mouseX;
+    const x = p.mouseX / WIDTH || 0.5;
     // const x = Math.sin(tick) * WIDTH;
-    const arms = Math.ceil(x / WIDTH * (FRACTION / 2));
+    const arms = Math.ceil(x * (FRACTION / 2));
 
-    const y = p.mouseY;
-    const arc = y / HEIGHT * p.TAU;
+    const y = p.mouseY / HEIGHT || 0.5;
+    const arc = y * p.TAU;
 
     for (let i = 0; i < arms; i++) {
       p.push();
