@@ -1,5 +1,5 @@
-# Spiral [[demo](http://www.chetcorcos.com/spiral/)]
+# Circle [[demo](http://www.chetcorcos.com/circle/)]
 
-Just a fun little demo built with [p5.js](http://p5js.org/), inspired by [this gif](http://i.imgur.com/7YNW1p0.gifv).
+Just a fun little demo built with [p5.js](http://p5js.org/).
 
-Check out the [demo](http://www.chetcorcos.com/spiral/).
+Check out the [demo](http://www.chetcorcos.com/circle/).

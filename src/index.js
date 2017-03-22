@@ -1,4 +1,6 @@
 import p5 from "p5";
+import "p5/lib/addons/p5.sound"; // assigns values to the p5 object prototype
+import songUrl from "../assets/zedd-stay.m4a";
 
 // create the container with the canvas centered on the page
 const root = document.createElement("div");
@@ -13,7 +15,7 @@ root.style.cursor = "none";
 document.body.appendChild(root);
 
 const link = document.createElement("a");
-link.href = "https://github.com/ccorcos/spiral";
+link.href = "https://github.com/ccorcos/circle";
 link.style.position = "absolute";
 link.style.bottom = 0;
 link.style.right = 0;
@@ -36,7 +38,7 @@ const map = fn => list => list.map(fn);
 const random = (min, max) => Math.random() * (max - min) + min;
 
 // the main sketch
-var sketch = p => {
+const sketch = p => {
   // size of the canvas
   const HEIGHT = window.innerHeight;
   const WIDTH = window.innerWidth;
@@ -44,56 +46,40 @@ var sketch = p => {
   const CENTERX = WIDTH / 2;
   const CENTERY = HEIGHT / 2;
   const RADIUS = EDGE / 6;
-  const FRACTION = 40;
-  const OFFSET = p.TAU / FRACTION;
 
-  p.setup = () => {
-    p.createCanvas(WIDTH, HEIGHT);
+  let mic, fft, song;
+  p.preload = () => {
+    song = p.loadSound(songUrl);
   };
-
-  let tick = 0.0;
-
-  const START = [random(0, p.TAU), random(0, p.TAU)];
-
-  // rotations per period?
-  const RPP = [random(4, 4.5), random(4.5, 5)];
+  p.setup = () => {
+    song.setVolume(0.1);
+    song.play();
+    p.createCanvas(WIDTH, HEIGHT);
+    p.noFill();
+    // mic = new p5.AudioIn();
+    // mic.start();
+    fft = new p5.FFT();
+    // fft.setInput(mic);
+    fft.setInput(song);
+  };
 
   p.draw = () => {
     p.background(51);
     p.noFill();
     p.stroke(255, 255, 255, 255 * 1.0);
-    p.strokeWeight(3);
+    p.strokeWeight(1);
 
-    // const speed = p.mouseX / WIDTH * 0.1;
-    const speed = random(0.01, 0.03);
+    const spectrum = fft.analyze();
+    const length = spectrum.length;
 
-    // const x = 0.5;
-    const x = p.mouseX / WIDTH || 0.5;
-    const arms = Math.ceil(x * (FRACTION / 2));
-
-    const y = p.mouseY / HEIGHT || 0.5;
-    const arc = y * p.TAU;
-
-    for (let i = 0; i < arms; i++) {
-      p.push();
-      p.translate(CENTERX, CENTERY);
-      p.rotate(i * OFFSET);
-      p.rotate(Math.sin(tick / RPP[0] + START[0]) * RPP[0]);
-      p.arc(-RADIUS, 0, RADIUS * 2, RADIUS * 2, 0, arc);
-      p.arc(+RADIUS, 0, RADIUS * 2, RADIUS * 2, p.PI, p.PI + arc);
-      p.pop();
+    p.beginShape();
+    for (let i = 0; i < length; i++) {
+      p.vertex(
+        p.map(i, 0, length, 0, WIDTH),
+        p.map(spectrum[i], 0, 255, HEIGHT, 0)
+      );
     }
-
-    for (let i = 0; i < arms; i++) {
-      p.push();
-      p.translate(CENTERX, CENTERY);
-      p.rotate(i * OFFSET);
-      p.rotate(Math.sin(tick / RPP[1] + START[1]) * RPP[1]);
-      p.arc(-RADIUS, 0, RADIUS * 2, RADIUS * 2, -arc, 0);
-      p.arc(+RADIUS, 0, RADIUS * 2, RADIUS * 2, p.PI - arc, p.PI);
-      p.pop();
-    }
-    tick += speed;
+    p.endShape();
   };
 };
 
