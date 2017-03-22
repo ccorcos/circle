@@ -1,5 +1,6 @@
 import p5 from "p5";
-import "p5/lib/addons/p5.sound"; // assigns values to the p5 object prototype
+// p5.sound assigns values to the p5 object prototype
+import "p5/lib/addons/p5.sound";
 import songUrl from "../assets/zedd-stay.m4a";
 
 // create the container with the canvas centered on the page
@@ -26,7 +27,7 @@ link.text = "source";
 document.body.appendChild(link);
 
 // helper functions
-const range = (min, max, step) =>
+const range = (min, max, step = 1) =>
   Array(Math.round((max - min) / step)).fill(0).map((_, i) => i * step + min);
 
 const flatten = list => list.reduce((acc, item) => acc.concat(item), []);
@@ -68,12 +69,22 @@ const sketch = p => {
   const FMAX = 44100 / 2;
   // we get 1024 frequency bins back from the FFT
   const BINS = 1024;
-
-  // TODO.
-  // - understand the spectrum information
-  // - pick a few octaves and plot them as different colored shapes
-  // - A0 is 27.5 which is below C1, the lowest key on a piano
-  // - 7 octaves on a piano, so lets use 8
+  // A0 is 27.5Hz which is below C1
+  const FSTART = 27.5;
+  // 7 octaves on a piano, lets use 8
+  const OCTAVES = 8;
+  // steps per octave to sample
+  const STEPS = 24;
+  // generate the frequencies for each octave band
+  const BANDS = range(0, OCTAVES).map(o => {
+    return range(0, STEPS).map(s => {
+      // this calculation is related to how you find the frequency of a note on a piano: f = 2 ^ (n / 12)
+      return Math.pow(2, o + s / STEPS) * FSTART;
+    });
+  });
+  // HSL color sweep
+  const HSTART = 240;
+  const HSTEP = -10;
 
   let mic, fft, song;
 
@@ -102,29 +113,37 @@ const sketch = p => {
     p.background(51);
     p.noFill();
     p.stroke(255, 255, 255, 255 * 1.0);
-    p.strokeWeight(1);
+    p.strokeWeight(0);
 
-    const spectrum = normalize(fft.analyze());
+    // this returns an array of 1024 values but we're going to use getEnergy instead:
+    // https://p5js.org/reference/#/p5.FFT/getEnergy
+    fft.analyze();
 
-    p.beginShape();
-    spectrum.forEach(({ f, a }) => {
-      // // polar display
-      // const nx = project([0, WIDTH], [1, 25]);
-      // const ny = project([0, HEIGHT], [0.1, 5]);
-      // const angle = Math.pow(2, f * nx(p.mouseX)) * p.TAU;
-      // const radius = ny(p.mouseY) * a * RADIUS + INNER;
-      // p.vertex(
-      //   CENTERX + radius * Math.cos(angle),
-      //   CENTERY + radius * Math.sin(angle)
-      // );
+    const drawVertex = (freq, i) => {
+      const radius = fft.getEnergy(freq) / 255 * RADIUS + INNER;
+      const angle = i / STEPS * p.TAU;
+      p.vertex(
+        CENTERX + radius * Math.cos(angle),
+        CENTERY + radius * Math.sin(angle)
+      );
+    };
 
-      // cartesian display
-      p.vertex(f * WIDTH, HEIGHT - a * HEIGHT);
-      // cartesian energy display (basically planck's equation)
-      // p.vertex(f * WIDTH, HEIGHT - f * a * HEIGHT);
+    let hue = HSTART;
+
+    BANDS.forEach(band => {
+      p.fill(p.color(`hsla(${hue}, 100%, 50%, 0.1)`));
+      p.beginShape();
+      band.forEach(drawVertex);
+      drawVertex(band[0], 0);
+      p.endShape();
+      hue += HSTEP;
     });
-    p.endShape();
   };
 };
 
 const fun = new p5(sketch, root);
+
+// TODO.
+// - continuous hue rotation
+// - play a nocturne-15
+// - gridlines for different keys
