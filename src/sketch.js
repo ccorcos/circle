@@ -128,14 +128,14 @@ export default songUrl => {
       };
 
       // hard coded hue values
-      // const hstart = HSTART
-      // const hstep = HSTEP
+      const hstart = HSTART;
+      const hstep = HSTEP;
 
       // dynamically set the hue with the mouse position
-      const hstart = p.mouseX === 0
-        ? HSTART
-        : p.map(p.mouseX, 0, WIDTH, 0, 360);
-      const hstep = p.mouseY === 0 ? HSTEP : p.map(p.mouseY, 0, WIDTH, -30, 30);
+      // const hstart = p.mouseX === 0
+      //   ? HSTART
+      //   : p.map(p.mouseX, 0, WIDTH, 0, 360);
+      // const hstep = p.mouseY === 0 ? HSTEP : p.map(p.mouseY, 0, WIDTH, -30, 30);
 
       let hue = rotateHue(hstart, hoffset);
 
