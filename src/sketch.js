@@ -102,6 +102,7 @@ export default songUrl => {
 
       // using a song file
       song.setVolume(1.0);
+      song.playMode("restart");
       song.play();
       fft = new p5.FFT();
       fft.setInput(song);

@@ -40,7 +40,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       chunks: ["zedd"],
       template: path.join(__dirname, "src/index.html"),
-      filename: "zedd/index.html"
+      filename: "zedd.html"
     })
   ]
 };
