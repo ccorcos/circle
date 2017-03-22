@@ -11,7 +11,7 @@ root.style.left = 0;
 root.style.right = 0;
 root.style.display = "flex";
 root.style.justifyContent = "center";
-root.style.cursor = "none";
+// root.style.cursor = "none";
 document.body.appendChild(root);
 
 const link = document.createElement("a");
@@ -58,7 +58,8 @@ const sketch = p => {
   const EDGE = Math.min(HEIGHT, WIDTH);
   const CENTERX = WIDTH / 2;
   const CENTERY = HEIGHT / 2;
-  const RADIUS = EDGE / 6;
+  const INNER = EDGE / 6;
+  const RADIUS = EDGE / 2 - INNER;
 
   let mic, fft, song;
 
@@ -88,7 +89,21 @@ const sketch = p => {
 
     p.beginShape();
     spectrum.forEach(({ f, a }) => {
-      p.vertex(f * WIDTH, HEIGHT - a * HEIGHT);
+      p.stroke(f * 255, 255, 255, 255 * 1.0);
+      // polar display
+      const nx = project([0, WIDTH], [1, 25]);
+      const ny = project([0, HEIGHT], [0.1, 5]);
+      const angle = Math.pow(2, f * nx(p.mouseX)) * p.TAU;
+      const radius = ny(p.mouseY) * a * RADIUS + INNER;
+      p.vertex(
+        CENTERX + radius * Math.cos(angle),
+        CENTERY + radius * Math.sin(angle)
+      );
+
+      // cartesian display
+      // p.vertex(f * WIDTH, HEIGHT - a * HEIGHT);
+      // cartesian energy display (basically planck's equation)
+      // p.vertex(f * WIDTH, HEIGHT - f * a * HEIGHT);
     });
     p.endShape();
   };
