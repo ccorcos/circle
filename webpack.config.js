@@ -3,7 +3,8 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 
 module.exports = {
   entry: {
-    index: path.join(__dirname, "src/index.js")
+    index: path.join(__dirname, "src/index.js"),
+    zedd: path.join(__dirname, "src/zedd.js")
   },
   output: {
     path: path.join(__dirname, "dist"),
@@ -33,7 +34,13 @@ module.exports = {
   },
   plugins: [
     new HtmlWebpackPlugin({
+      chunks: ["index"],
       template: path.join(__dirname, "src/index.html")
+    }),
+    new HtmlWebpackPlugin({
+      chunks: ["zedd"],
+      template: path.join(__dirname, "src/index.html"),
+      filename: "zedd/index.html"
     })
   ]
 };
