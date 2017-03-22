@@ -37,6 +37,19 @@ const map = fn => list => list.map(fn);
 
 const random = (min, max) => Math.random() * (max - min) + min;
 
+const project = ([minIn, maxIn], [minOut, maxOut]) =>
+  value => (value - minIn) / (maxIn - minIn) * (maxOut - minOut) + minOut;
+
+// normalize the spectrum
+const normalize = spectrum => {
+  const nf = project([0, spectrum.length], [0, 1]);
+  const na = project([0, 255], [0, 1]);
+  return spectrum.map((x, i) => ({
+    f: nf(i),
+    a: na(x)
+  }));
+};
+
 // the main sketch
 const sketch = p => {
   // size of the canvas
@@ -48,9 +61,11 @@ const sketch = p => {
   const RADIUS = EDGE / 6;
 
   let mic, fft, song;
+
   p.preload = () => {
     song = p.loadSound(songUrl);
   };
+
   p.setup = () => {
     song.setVolume(0.1);
     song.play();
@@ -69,16 +84,12 @@ const sketch = p => {
     p.stroke(255, 255, 255, 255 * 1.0);
     p.strokeWeight(1);
 
-    const spectrum = fft.analyze();
-    const length = spectrum.length;
+    const spectrum = normalize(fft.analyze());
 
     p.beginShape();
-    for (let i = 0; i < length; i++) {
-      p.vertex(
-        p.map(i, 0, length, 0, WIDTH),
-        p.map(spectrum[i], 0, 255, HEIGHT, 0)
-      );
-    }
+    spectrum.forEach(({ f, a }) => {
+      p.vertex(f * WIDTH, HEIGHT - a * HEIGHT);
+    });
     p.endShape();
   };
 };
