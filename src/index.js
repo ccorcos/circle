@@ -12,7 +12,7 @@ root.style.left = 0;
 root.style.right = 0;
 root.style.display = "flex";
 root.style.justifyContent = "center";
-// root.style.cursor = "none";
+root.style.cursor = "none";
 document.body.appendChild(root);
 
 const link = document.createElement("a");
@@ -127,16 +127,23 @@ const sketch = p => {
       );
     };
 
-    let hue = rotateHue(HSTART, hoffset);
+    // hard coded hue values
+    // const hstart = HSTART
+    // const hstep = HSTEP
+
+    // dynamically set the hue with the mouse position
+    const hstart = p.mouseX === 0 ? HSTART : p.map(p.mouseX, 0, WIDTH, 0, 360);
+    const hstep = p.mouseY === 0 ? HSTEP : p.map(p.mouseY, 0, WIDTH, -30, 30);
+
+    let hue = rotateHue(hstart, hoffset);
 
     BANDS.forEach(band => {
-      console.log(hue);
       p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.1)`));
       p.beginShape();
       band.forEach(drawVertex);
       drawVertex(band[0], 0);
       p.endShape();
-      hue = rotateHue(hue, HSTEP);
+      hue = rotateHue(hue, hstep);
     });
 
     hoffset = rotateHue(hoffset, HSPEED);
@@ -146,5 +153,5 @@ const sketch = p => {
 const fun = new p5(sketch, root);
 
 // TODO.
-// - play a nocturne-15
 // - gridlines for different keys
+// - play a nocturne-15
