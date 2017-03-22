@@ -57,7 +57,7 @@ const sketch = p => {
   const CENTERY = HEIGHT / 2;
   // inner and outer radius of the circle
   const INNER = EDGE / 6;
-  const RADIUS = EDGE / 2 - INNER;
+  const RADIUS = EDGE / 3 - INNER;
 
   // some FFT documentation here:
   // https://p5js.org/reference/#/p5.FFT
@@ -147,6 +147,42 @@ const sketch = p => {
     });
 
     hoffset = rotateHue(hoffset, HSPEED);
+
+    if (p.keyIsDown(" ".charCodeAt())) {
+      p.stroke(255, 255, 255, 255 * 0.2);
+      p.strokeWeight(1);
+      [
+        "A",
+        "",
+        "B",
+        "C",
+        "",
+        "D",
+        "",
+        "E",
+        "F",
+        "",
+        "G",
+        ""
+      ].forEach((letter, i) => {
+        const angle = i / 12 * p.TAU;
+        p.line(
+          CENTERX,
+          CENTERY,
+          CENTERX + RADIUS * Math.cos(angle),
+          CENTERY + RADIUS * Math.sin(angle)
+        );
+
+        p.textSize(14);
+        p.textAlign(p.CENTER, p.CENTER);
+        p.fill(255, 255, 255, 255 * 0.2);
+        p.text(
+          letter,
+          CENTERX + RADIUS * 1.1 * Math.cos(angle),
+          CENTERY + RADIUS * 1.1 * Math.sin(angle)
+        );
+      });
+    }
   };
 };
 
