@@ -52,14 +52,28 @@ const normalize = spectrum => {
 
 // the main sketch
 const sketch = p => {
-  // size of the canvas
+  // canvas size
   const HEIGHT = window.innerHeight;
   const WIDTH = window.innerWidth;
+  // edge of a square in the middle
   const EDGE = Math.min(HEIGHT, WIDTH);
   const CENTERX = WIDTH / 2;
   const CENTERY = HEIGHT / 2;
+  // inner and outer radius of the circle
   const INNER = EDGE / 6;
   const RADIUS = EDGE / 2 - INNER;
+
+  // some FFT documentation here:
+  // https://p5js.org/reference/#/p5.FFT
+  const FMAX = 44100 / 2;
+  // we get 1024 frequency bins back from the FFT
+  const BINS = 1024;
+
+  // TODO.
+  // - understand the spectrum information
+  // - pick a few octaves and plot them as different colored shapes
+  // - A0 is 27.5 which is below C1, the lowest key on a piano
+  // - 7 octaves on a piano, so lets use 8
 
   let mic, fft, song;
 
@@ -68,14 +82,19 @@ const sketch = p => {
   };
 
   p.setup = () => {
-    song.setVolume(0.1);
-    song.play();
     p.createCanvas(WIDTH, HEIGHT);
     p.noFill();
+
+    // using microphone
     // mic = new p5.AudioIn();
     // mic.start();
-    fft = new p5.FFT();
+    // fft = new p5.FFT();
     // fft.setInput(mic);
+
+    // using a song file
+    song.setVolume(0.1);
+    song.play();
+    fft = new p5.FFT();
     fft.setInput(song);
   };
 
@@ -89,19 +108,18 @@ const sketch = p => {
 
     p.beginShape();
     spectrum.forEach(({ f, a }) => {
-      p.stroke(f * 255, 255, 255, 255 * 1.0);
-      // polar display
-      const nx = project([0, WIDTH], [1, 25]);
-      const ny = project([0, HEIGHT], [0.1, 5]);
-      const angle = Math.pow(2, f * nx(p.mouseX)) * p.TAU;
-      const radius = ny(p.mouseY) * a * RADIUS + INNER;
-      p.vertex(
-        CENTERX + radius * Math.cos(angle),
-        CENTERY + radius * Math.sin(angle)
-      );
+      // // polar display
+      // const nx = project([0, WIDTH], [1, 25]);
+      // const ny = project([0, HEIGHT], [0.1, 5]);
+      // const angle = Math.pow(2, f * nx(p.mouseX)) * p.TAU;
+      // const radius = ny(p.mouseY) * a * RADIUS + INNER;
+      // p.vertex(
+      //   CENTERX + radius * Math.cos(angle),
+      //   CENTERY + radius * Math.sin(angle)
+      // );
 
       // cartesian display
-      // p.vertex(f * WIDTH, HEIGHT - a * HEIGHT);
+      p.vertex(f * WIDTH, HEIGHT - a * HEIGHT);
       // cartesian energy display (basically planck's equation)
       // p.vertex(f * WIDTH, HEIGHT - f * a * HEIGHT);
     });
