@@ -56,7 +56,7 @@ const sketch = p => {
   const CENTERX = WIDTH / 2;
   const CENTERY = HEIGHT / 2;
   // inner and outer radius of the circle
-  const INNER = EDGE / 6;
+  const INNER = EDGE / 8;
   const RADIUS = EDGE / 3 - INNER;
 
   // some FFT documentation here:
@@ -99,7 +99,7 @@ const sketch = p => {
     // fft.setInput(mic);
 
     // using a song file
-    song.setVolume(0.1);
+    song.setVolume(1.0);
     song.play();
     fft = new p5.FFT();
     fft.setInput(song);
@@ -138,7 +138,7 @@ const sketch = p => {
     let hue = rotateHue(hstart, hoffset);
 
     BANDS.forEach(band => {
-      p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.1)`));
+      p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.05)`));
       p.beginShape();
       band.forEach(drawVertex);
       drawVertex(band[0], 0);
@@ -188,6 +188,4 @@ const sketch = p => {
 
 const fun = new p5(sketch, root);
 
-// TODO.
-// - gridlines for different keys
 // - play a nocturne-15
