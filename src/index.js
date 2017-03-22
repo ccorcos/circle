@@ -41,14 +41,9 @@ const random = (min, max) => Math.random() * (max - min) + min;
 const project = ([minIn, maxIn], [minOut, maxOut]) =>
   value => (value - minIn) / (maxIn - minIn) * (maxOut - minOut) + minOut;
 
-// normalize the spectrum
-const normalize = spectrum => {
-  const nf = project([0, spectrum.length], [0, 1]);
-  const na = project([0, 255], [0, 1]);
-  return spectrum.map((x, i) => ({
-    f: nf(i),
-    a: na(x)
-  }));
+const rotateHue = (h, dh) => {
+  const x = (h + dh) % 360;
+  return x < 0 ? x + 360 : x;
 };
 
 // the main sketch
@@ -85,6 +80,7 @@ const sketch = p => {
   // HSL color sweep
   const HSTART = 240;
   const HSTEP = -10;
+  const HSPEED = 0;
 
   let mic, fft, song;
 
@@ -109,6 +105,9 @@ const sketch = p => {
     fft.setInput(song);
   };
 
+  // hue offset
+  let hoffset = 0;
+
   p.draw = () => {
     p.background(51);
     p.noFill();
@@ -128,22 +127,24 @@ const sketch = p => {
       );
     };
 
-    let hue = HSTART;
+    let hue = rotateHue(HSTART, hoffset);
 
     BANDS.forEach(band => {
-      p.fill(p.color(`hsla(${hue}, 100%, 50%, 0.1)`));
+      console.log(hue);
+      p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.1)`));
       p.beginShape();
       band.forEach(drawVertex);
       drawVertex(band[0], 0);
       p.endShape();
-      hue += HSTEP;
+      hue = rotateHue(hue, HSTEP);
     });
+
+    hoffset = rotateHue(hoffset, HSPEED);
   };
 };
 
 const fun = new p5(sketch, root);
 
 // TODO.
-// - continuous hue rotation
 // - play a nocturne-15
 // - gridlines for different keys
