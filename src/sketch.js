@@ -81,6 +81,8 @@ export default songUrl => {
     const HSTART = 240;
     const HSTEP = -10;
     const HSPEED = 0;
+    // exponentiate amplitude to give more shape to the circles
+    const SHAPE = 3;
 
     let mic, fft, song;
 
@@ -119,7 +121,8 @@ export default songUrl => {
       fft.analyze();
 
       const drawVertex = (freq, i) => {
-        const radius = fft.getEnergy(freq) / 255 * RADIUS + INNER;
+        const radius = Math.pow(fft.getEnergy(freq) / 255, SHAPE) * RADIUS +
+          INNER;
         const angle = i / STEPS * p.TAU;
         p.vertex(
           CENTERX + radius * Math.cos(angle),
