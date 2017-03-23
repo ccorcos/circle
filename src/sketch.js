@@ -125,7 +125,9 @@ export default (songUrl, { xyhue, xysharp, grid, hspeed } = {}) => {
       fft.analyze();
 
       const drawVertex = (freq, i) => {
-        const radius = Math.pow(fft.getEnergy(freq) / 255, SHAPE) * RADIUS;
+        const radius = Math.pow(fft.getEnergy(freq) / 255, SHAPE) *
+          (RADIUS - INNER) +
+          INNER;
         const angle = i / STEPS * p.TAU;
         p.vertex(
           CENTERX + radius * Math.cos(angle),
