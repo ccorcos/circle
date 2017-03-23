@@ -45,7 +45,7 @@ const rotateHue = (h, dh) => {
   return x < 0 ? x + 360 : x;
 };
 
-export default songUrl => {
+export default (songUrl, { xyhue, xysharp, grid, hspeed } = {}) => {
   // the main sketch
   const sketch = p => {
     // canvas size
@@ -55,9 +55,6 @@ export default songUrl => {
     const EDGE = Math.min(HEIGHT, WIDTH);
     const CENTERX = WIDTH / 2;
     const CENTERY = HEIGHT / 2;
-    // inner and outer radius of the circle
-    const INNER = EDGE / 8;
-    const RADIUS = EDGE / 3 - INNER;
 
     // some FFT documentation here:
     // https://p5js.org/reference/#/p5.FFT
@@ -77,12 +74,6 @@ export default songUrl => {
         return Math.pow(2, o + s / STEPS) * FSTART;
       });
     });
-    // HSL color sweep
-    const HSTART = 240;
-    const HSTEP = -10;
-    const HSPEED = 0;
-    // exponentiate amplitude to give more shape to the circles
-    const SHAPE = 3;
 
     let mic, fft, song;
 
@@ -117,13 +108,24 @@ export default songUrl => {
       p.stroke(255, 255, 255, 255 * 1.0);
       p.strokeWeight(0);
 
+      // inner and outer radius of the circle
+      // exponentiate amplitude to give more shape to the circles
+      const RADIUS = EDGE / 3;
+      let INNER, SHAPE;
+      if (xysharp) {
+        INNER = p.map(p.mouseY, 0, HEIGHT, 0, EDGE / 6);
+        SHAPE = p.map(p.mouseX, 0, WIDTH, 1, 10);
+      } else {
+        INNER = EDGE / 8;
+        SHAPE = 3;
+      }
+
       // this returns an array of 1024 values but we're going to use getEnergy instead:
       // https://p5js.org/reference/#/p5.FFT/getEnergy
       fft.analyze();
 
       const drawVertex = (freq, i) => {
-        const radius = Math.pow(fft.getEnergy(freq) / 255, SHAPE) * RADIUS +
-          INNER;
+        const radius = Math.pow(fft.getEnergy(freq) / 255, SHAPE) * RADIUS;
         const angle = i / STEPS * p.TAU;
         p.vertex(
           CENTERX + radius * Math.cos(angle),
@@ -131,30 +133,37 @@ export default songUrl => {
         );
       };
 
-      // hard coded hue values
-      const hstart = HSTART;
-      const hstep = HSTEP;
+      // HSL color sweep
+      let HSTART, HSTEP, HSPEED;
+      if (xyhue) {
+        // dynamically set the hue with the mouse position
+        HSTART = p.mouseX === 0 ? 240 : p.map(p.mouseX, 0, WIDTH, 0, 360);
+        HSTEP = p.mouseY === 0 ? -10 : p.map(p.mouseY, 0, WIDTH, -30, 30);
+      } else {
+        // hard coded hue values
+        HSTART = 240;
+        HSTEP = -10;
+      }
+      if (hspeed) {
+        HSPEED = hspeed;
+      } else {
+        HSPEED = 0;
+      }
 
-      // dynamically set the hue with the mouse position
-      // const hstart = p.mouseX === 0
-      //   ? HSTART
-      //   : p.map(p.mouseX, 0, WIDTH, 0, 360);
-      // const hstep = p.mouseY === 0 ? HSTEP : p.map(p.mouseY, 0, WIDTH, -30, 30);
-
-      let hue = rotateHue(hstart, hoffset);
+      let hue = rotateHue(HSTART, hoffset);
 
       BANDS.forEach(band => {
-        p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.05)`));
+        p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.1)`));
         p.beginShape();
         band.forEach(drawVertex);
         drawVertex(band[0], 0);
         p.endShape();
-        hue = rotateHue(hue, hstep);
+        hue = rotateHue(hue, HSTEP);
       });
 
       hoffset = rotateHue(hoffset, HSPEED);
 
-      if (p.keyIsDown(" ".charCodeAt())) {
+      if (p.keyIsDown(" ".charCodeAt()) || grid) {
         p.stroke(255, 255, 255, 255 * 0.2);
         p.strokeWeight(1);
         [
