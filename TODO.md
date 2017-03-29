@@ -1,5 +1,4 @@
 - configs
-  - microphone
   - visuals
     - flat fft
     - circle fft
