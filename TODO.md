@@ -1,5 +1,5 @@
 - configs
-  - soundcloud vs microphone vs upload
+  - microphone
   - visuals
     - flat fft
     - circle fft

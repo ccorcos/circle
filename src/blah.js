@@ -65,7 +65,46 @@ const styles = {
     fontSize: 12,
     textDecoration: "none",
     fontWeight: "normal"
+  }),
+  dropping: css({
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "rgba(255,255,255,0.4)",
+    color: "white",
+    textTransform: "uppercase",
+    fontSize: "32",
+    fontWeight: "bold",
+    fontFamily: "sans-serif",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
   })
+};
+
+const getFirstFile = event => {
+  const dt = event.dataTransfer;
+  if (dt.items) {
+    // Use DataTransferItemList interface to access the file(s)
+    for (let i = 0; i < dt.items.length; i++) {
+      if (dt.items[i].kind == "file") {
+        const f = dt.items[i].getAsFile();
+        if (/audio/.test(f.type)) {
+          return f;
+        }
+      }
+    }
+  } else {
+    // Use DataTransfer interface to access the file(s)
+    for (let i = 0; i < dt.files.length; i++) {
+      const f = dt.files[i];
+      if (/audio/.test(f.type)) {
+        return f;
+      }
+    }
+  }
 };
 
 export default class Sketch extends React.PureComponent {
@@ -81,7 +120,8 @@ export default class Sketch extends React.PureComponent {
       grid: false,
       opacity: 0.1,
       scrubbing: undefined,
-      moving: false
+      moving: false,
+      dropping: false
     };
     this.scrubbers = {
       sharpness: [1, 10],
@@ -171,6 +211,59 @@ export default class Sketch extends React.PureComponent {
   stopScubbing = () => {
     this.setState({ scrubbing: undefined });
   };
+  onDrop = event => {
+    event.preventDefault();
+    this.upload = getFirstFile(event);
+    this.reload();
+    this.setState({
+      dropping: false,
+      uploading: false
+    });
+  };
+  onDragOver = event => {
+    // prevent default behavior
+    event.preventDefault();
+    this.setState({
+      dropping: true
+    });
+  };
+  renderDropZone() {
+    if (this.state.dropping || this.state.uploading) {
+      return (
+        <div className={styles.dropping}>
+          Drop a music file
+        </div>
+      );
+    } else {
+      return false;
+    }
+  }
+  setUploadingTrue = () => {
+    this.setState({
+      uploading: true
+    });
+  };
+  setUploadingFalse = () => {
+    this.setState({
+      uploading: false,
+      dropping: false
+    });
+  };
+  renderUpload() {
+    if (this.state.uploading || this.state.dropping) {
+      return (
+        <button onClick={this.setUploadingFalse} className={styles.button}>
+          cancel
+        </button>
+      );
+    } else {
+      return (
+        <button onClick={this.setUploadingTrue} className={styles.button}>
+          upload
+        </button>
+      );
+    }
+  }
   render() {
     const style = {
       cursor: this.state.scrubbing
@@ -178,12 +271,18 @@ export default class Sketch extends React.PureComponent {
         : this.state.moving ? "default" : "none"
     };
     return (
-      <div style={style} className={styles.layout}>
+      <div
+        style={style}
+        onDrop={this.onDrop}
+        onDragOver={this.onDragOver}
+        className={styles.layout}
+      >
         <div
           className={styles.content}
           onClick={this.stopScubbing}
           ref={this.rootRef}
         />
+        {this.renderDropZone()}
         <div
           className={css(
             styles.toolbar,
@@ -193,6 +292,7 @@ export default class Sketch extends React.PureComponent {
           )}
         >
           {this.renderPausePlay()}
+          {this.renderUpload()}
           {this.renderGridBool()}
           {Object.keys(this.scrubbers).map(this.renderScrubber)}
           <a
@@ -213,12 +313,20 @@ export default class Sketch extends React.PureComponent {
       this.deriveSizes();
       this.canvas.resize(this.width, this.height);
     };
+    document.body.addEventListener("mouseleave", () => {
+      this.setState({
+        dropping: false
+      });
+    });
+  }
+  reload() {
+    this.p.remove();
+    new p5(this.sketch, this.root);
   }
   deriveSizes() {
     // size of the canvas
-    const rect = this.root.getBoundingClientRect();
-    this.height = rect.height;
-    this.width = rect.width;
+    this.height = window.innerHeight;
+    this.width = window.innerWidth;
     // edge of a square in the middle
     this.edge = Math.min(this.height, this.width);
     this.center = {};
@@ -246,6 +354,7 @@ export default class Sketch extends React.PureComponent {
     }
   }
   sketch = p => {
+    this.p = p;
     // A0 is 27.5Hz which is below C1
     const fmin = 27.5;
     // 7 octaves on a piano, lets use 8
@@ -261,7 +370,7 @@ export default class Sketch extends React.PureComponent {
     });
 
     p.preload = () => {
-      this.song = p.loadSound(songUrl);
+      this.song = p.loadSound(this.upload || songUrl);
     };
 
     p.setup = () => {
