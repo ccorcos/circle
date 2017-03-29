@@ -1,6 +1,13 @@
 - configs
   - soundcloud vs microphone vs upload
-  - play / pause music
+  - scrub values
+    - sharpness
+    - gain
+    - hue
+    - sweep
+    - inner radius
+
+
   - mousex select options
     - color
     - sweep amount

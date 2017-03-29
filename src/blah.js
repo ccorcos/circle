@@ -33,74 +33,93 @@ const styles = {
 export default class Sketch extends React.PureComponent {
   constructor(props) {
     super(props);
+    this.state = {
+      playing: true,
+      sharpness: 0.3,
+      scrubbing: undefined
+    };
   }
-  saveRoot = node => {
+  // save a reference to the root node
+  rootRef = node => {
     this.root = node;
   };
-  onPlay = () => {
-    this.song.play();
-    this.forceUpdate();
+  play = () => {
+    this.setState({ playing: true });
   };
-  onPause = () => {
-    this.song.pause();
-    this.forceUpdate();
+  pause = () => {
+    this.setState({ playing: false });
   };
   renderPausePlay() {
-    if (this.song) {
-      if (this.song.isPlaying()) {
-        return <button onClick={this.onPause}>pause</button>;
-      } else {
-        return <button onClick={this.onPlay}>play</button>;
-      }
+    if (this.state.playing) {
+      return <button onClick={this.pause}>pause</button>;
     } else {
-      return false;
+      return <button onClick={this.play}>play</button>;
     }
   }
+  scrubSharpness = () => {
+    this.setState({ scrubbing: "sharpness" });
+  };
+  renderSharpness() {
+    if (this.state.scrubbing === "sharpness") {
+      return <button>sharpness {this.state.sharpness}</button>;
+    } else {
+      return (
+        <button onClick={this.scrubSharpness}>
+          sharpness {this.state.sharpness}
+        </button>
+      );
+    }
+  }
+  stopScubbing = () => {
+    this.setState({ scrubbing: undefined });
+  };
   render() {
     return (
       <div className={styles.layout}>
-        <div className={styles.content} ref={this.saveRoot} />
+        <div
+          className={styles.content}
+          onClick={this.stopScubbing}
+          ref={this.rootRef}
+        />
         <div className={styles.toolbar}>
           {this.renderPausePlay()}
+          {this.renderSharpness()}
         </div>
       </div>
     );
   }
   componentDidMount() {
+    this.deriveSizes();
     new p5(this.sketch, this.root);
-    window.onresize = this.onResize;
+    window.onresize = () => {
+      this.deriveSizes();
+      this.canvas.resize(this.width, this.height);
+    };
   }
   deriveSizes() {
     // size of the canvas
     const rect = this.root.getBoundingClientRect();
-    this.HEIGHT = rect.height;
-    this.WIDTH = rect.width;
+    this.height = rect.height;
+    this.width = rect.width;
     // edge of a square in the middle
-    this.EDGE = Math.min(this.HEIGHT, this.WIDTH);
-    this.CENTERX = this.WIDTH / 2;
-    this.CENTERY = this.HEIGHT / 2;
-    this.RADIUS = this.EDGE / 3;
+    this.edge = Math.min(this.height, this.width);
+    this.center = {};
+    this.center.x = this.width / 2;
+    this.center.y = this.height / 2;
+    this.radius = this.edge / 3;
   }
-  onResize = () => {
-    if (this.canvas) {
-      this.deriveSizes();
-      this.canvas.resize(this.WIDTH, this.HEIGHT);
-    }
-  };
   sketch = p => {
-    this.deriveSizes();
-
     // A0 is 27.5Hz which is below C1
-    const FSTART = 27.5;
+    const fmin = 27.5;
     // 7 octaves on a piano, lets use 8
-    const OCTAVES = 8;
+    const octaves = 8;
     // steps per octave to sample
-    const STEPS = 24;
+    const steps = 24;
     // generate the frequencies for each octave band
-    const BANDS = u.range(0, OCTAVES).map(o => {
-      return u.range(0, STEPS).map(s => {
+    const bands = u.range(0, octaves).map(o => {
+      return u.range(0, steps).map(s => {
         // this calculation is related to how you find the frequency of a note on a piano: f = 2 ^ (n / 12)
-        return Math.pow(2, o + s / STEPS) * FSTART;
+        return Math.pow(2, o + s / steps) * fmin;
       });
     });
 
@@ -109,7 +128,7 @@ export default class Sketch extends React.PureComponent {
     };
 
     p.setup = () => {
-      this.canvas = p.createCanvas(this.WIDTH, this.HEIGHT);
+      this.canvas = p.createCanvas(this.width, this.height);
       p.noFill();
 
       // using microphone
@@ -122,7 +141,6 @@ export default class Sketch extends React.PureComponent {
       this.song.setVolume(1.0);
       this.song.playMode("restart");
       this.song.play();
-      this.forceUpdate();
       this.fft = new p5.FFT();
       this.fft.setInput(this.song);
     };
@@ -131,6 +149,12 @@ export default class Sketch extends React.PureComponent {
     let hoffset = 0;
 
     p.draw = () => {
+      if (this.state.playing && !this.song.isPlaying()) {
+        this.song.play();
+      }
+      if (!this.state.playing && !this.song.isPaused()) {
+        this.song.pause();
+      }
       p.background(51);
       p.noFill();
       p.stroke(255, 255, 255, 255 * 1.0);
@@ -139,23 +163,30 @@ export default class Sketch extends React.PureComponent {
       // inner and outer radius of the circle
       // exponentiate amplitude to give more shape to the circles
 
-      let INNER, SHAPE;
-      // INNER = p.map(p.mouseY, 0, HEIGHT, 0, EDGE / 6);
-      // SHAPE = p.map(p.mouseX, 0, WIDTH, 1, 10);
-      INNER = this.EDGE / 8;
-      SHAPE = 3;
+      let innerRadius;
+      // innerRadius = p.map(p.mouseY, 0, HEIGHT, 0, EDGE / 6);
+      // sharpness = p.map(p.mouseX, 0, WIDTH, 1, 10);
+      innerRadius = this.edge / 8;
+
+      if (this.state.scrubbing === "sharpness") {
+        this.setState({
+          sharpness: p.map(p.mouseX, 0, this.width, 0, 1)
+        });
+      }
+
+      const sharpness = p.map(this.state.sharpness, 0, 1, 1, 10);
 
       // this returns an array of 1024 values but we're going to use getEnergy instead:
       this.fft.analyze();
 
       const drawVertex = (freq, i) => {
-        const radius = Math.pow(this.fft.getEnergy(freq) / 255, SHAPE) *
-          (this.RADIUS - INNER) +
-          INNER;
-        const angle = i / STEPS * p.TAU;
+        const radius = Math.pow(this.fft.getEnergy(freq) / 255, sharpness) *
+          (this.radius - innerRadius) +
+          innerRadius;
+        const angle = i / steps * p.TAU;
         p.vertex(
-          this.CENTERX + radius * Math.cos(angle),
-          this.CENTERY + radius * Math.sin(angle)
+          this.center.x + radius * Math.cos(angle),
+          this.center.y + radius * Math.sin(angle)
         );
       };
 
@@ -173,7 +204,7 @@ export default class Sketch extends React.PureComponent {
 
       let hue = u.rotateHue(HSTART, hoffset);
 
-      BANDS.forEach(band => {
+      bands.forEach(band => {
         p.fill(p.color(`hsla(${Math.round(hue)}, 100%, 50%, 0.1)`));
         p.beginShape();
         band.forEach(drawVertex);
@@ -203,10 +234,10 @@ export default class Sketch extends React.PureComponent {
         ].forEach((letter, i) => {
           const angle = i / 12 * p.TAU;
           p.line(
-            this.CENTERX,
-            this.CENTERY,
-            this.CENTERX + this.RADIUS * Math.cos(angle),
-            this.CENTERY + this.RADIUS * Math.sin(angle)
+            this.center.x,
+            this.center.y,
+            this.center.x + this.radius * Math.cos(angle),
+            this.center.y + this.radius * Math.sin(angle)
           );
 
           p.textSize(14);
@@ -214,8 +245,8 @@ export default class Sketch extends React.PureComponent {
           p.fill(255, 255, 255, 255 * 0.2);
           p.text(
             letter,
-            this.CENTERX + this.RADIUS * 1.1 * Math.cos(angle),
-            this.CENTERY + this.RADIUS * 1.1 * Math.sin(angle)
+            this.center.x + this.radius * 1.1 * Math.cos(angle),
+            this.center.y + this.radius * 1.1 * Math.sin(angle)
           );
         });
       }
