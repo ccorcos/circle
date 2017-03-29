@@ -122,7 +122,9 @@ export default class Sketch extends React.PureComponent {
       scrubbing: undefined,
       moving: false,
       dropping: false,
-      mic: false
+      mic: false,
+      type: "polar",
+      overlap: true
     };
     this.scrubbers = {
       sharpness: [1, 10],
@@ -132,7 +134,7 @@ export default class Sketch extends React.PureComponent {
       radius: [0, 1],
       opacity: [0, 1]
     };
-    this.params = ["grid", "mic"];
+    this.params = ["grid", "mic", "type", "overlap"];
     if (window.location.search !== "") {
       const saved = window.location.search
         .slice(1)
@@ -140,7 +142,11 @@ export default class Sketch extends React.PureComponent {
         .map(str => str.split("="))
         .reduce(
           (obj, [name, str]) => {
-            obj[name] = JSON.parse(str);
+            try {
+              obj[name] = JSON.parse(str);
+            } catch (e) {
+              obj[name] = str;
+            }
             return obj;
           },
           {}
@@ -209,6 +215,29 @@ export default class Sketch extends React.PureComponent {
     } else {
       return (
         <button className={styles.button} onClick={turnOn}>grid on</button>
+      );
+    }
+  }
+  setPolar = () => {
+    this.setState({
+      type: "polar"
+    });
+  };
+  setLinear = () => {
+    this.setState({
+      type: "linear"
+    });
+  };
+  renderTypeSelect() {
+    if (this.state.type === "linear") {
+      return (
+        <button className={styles.button} onClick={this.setPolar}>polar</button>
+      );
+    } else {
+      return (
+        <button className={styles.button} onClick={this.setLinear}>
+          linear
+        </button>
       );
     }
   }
@@ -296,6 +325,27 @@ export default class Sketch extends React.PureComponent {
       );
     }
   }
+  setOverlap = () => {
+    this.setState({ overlap: true });
+  };
+  setSpread = () => {
+    this.setState({ overlap: false });
+  };
+  renderSpreadOverlap() {
+    if (this.state.overlap) {
+      return (
+        <button onClick={this.setSpread} className={styles.button}>
+          spread
+        </button>
+      );
+    } else {
+      return (
+        <button onClick={this.setOverlap} className={styles.button}>
+          overlap
+        </button>
+      );
+    }
+  }
   render() {
     const style = {
       cursor: this.state.scrubbing
@@ -326,6 +376,8 @@ export default class Sketch extends React.PureComponent {
           {this.renderMicVsSong()}
           {this.renderPausePlay()}
           {this.renderUpload()}
+          {this.renderTypeSelect()}
+          {this.renderSpreadOverlap()}
           {this.renderGridBool()}
           {Object.keys(this.scrubbers).map(this.renderScrubber)}
           <a
@@ -362,10 +414,6 @@ export default class Sketch extends React.PureComponent {
     this.width = window.innerWidth;
     // edge of a square in the middle
     this.edge = Math.min(this.height, this.width);
-    this.center = {};
-    this.center.x = this.width / 2;
-    this.center.y = this.height / 2;
-    this.radius = this.edge / 3;
   }
   startMoving() {
     window.clearTimeout(this.movingTimerId);
@@ -468,82 +516,142 @@ export default class Sketch extends React.PureComponent {
       p.stroke(255, 255, 255, 255 * 1.0);
       p.strokeWeight(0);
 
-      // inner and outer radius of the circle
-      // exponentiate amplitude to give more shape to the circles
-
-      const innerRadius = this.edge / 6 * this.state.radius;
-
-      // this returns an array of 1024 values but we're going to use getEnergy instead:
       this.fft.analyze();
-
-      const drawVertex = (freq, i) => {
-        const radius = Math.pow(
-          this.fft.getEnergy(freq) / 255,
-          this.state.sharpness
-        ) *
-          (this.radius - innerRadius) *
-          this.state.gain +
-          innerRadius;
-        const angle = i / steps * p.TAU;
-        p.vertex(
-          this.center.x + radius * Math.cos(angle),
-          this.center.y + radius * Math.sin(angle)
-        );
-      };
 
       // HSL color sweep
       let HSPEED = 0;
 
       let hue = u.rotateHue(this.state.hue, hoffset);
 
-      bands.forEach(band => {
-        p.fill(
-          p.color(`hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`)
-        );
-        p.beginShape();
-        band.forEach(drawVertex);
-        drawVertex(band[0], 0);
-        p.endShape();
-        hue = u.rotateHue(hue, this.state.sweep);
-      });
+      // padding
+      const padding = {
+        x: 150,
+        y: this.state.type === "linear" ? (this.height - 400) / 2 : 50
+      };
+
+      const rect = {
+        x: padding.x,
+        y: padding.y,
+        width: this.width - padding.x * 2,
+        height: this.height - padding.y * 2
+      };
+
+      if (this.state.type === "polar") {
+        const octaveEdge = this.state.overlap
+          ? this.edge
+          : rect.width / octaves;
+
+        const octaveRadius = octaveEdge / 3;
+
+        const innerRadius = octaveEdge / 6 * this.state.radius;
+
+        // this.center = {};
+        // this.center.x = this.width / 2;
+        // this.center.y = this.height / 2;
+
+        bands.forEach((band, j) => {
+          p.fill(
+            p.color(
+              `hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`
+            )
+          );
+          const center = {
+            x: this.state.overlap
+              ? rect.x + rect.width / 2
+              : rect.x + octaveEdge * (j + 0.5),
+            y: rect.y + rect.height / 2
+          };
+
+          const drawVertex = (freq, i) => {
+            const radius = Math.pow(
+              this.fft.getEnergy(freq) / 255,
+              this.state.sharpness
+            ) *
+              (octaveRadius - innerRadius) *
+              this.state.gain +
+              innerRadius;
+            const angle = i / steps * p.TAU;
+            p.vertex(
+              center.x + radius * Math.cos(angle),
+              center.y + radius * Math.sin(angle)
+            );
+          };
+
+          p.beginShape();
+          band.forEach(drawVertex);
+          drawVertex(band[0], 0);
+          p.endShape();
+          hue = u.rotateHue(hue, this.state.sweep);
+        });
+      } else if (this.state.type === "linear") {
+        const octaveWidth = this.state.overlap
+          ? rect.width
+          : rect.width / octaves;
+
+        bands.forEach((band, j) => {
+          p.fill(
+            p.color(
+              `hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`
+            )
+          );
+          p.beginShape();
+          const xoffset = this.state.overlap ? 0 : octaveWidth * j;
+          p.vertex(rect.x + xoffset, rect.y + rect.height);
+          const drawVertex = (freq, i) => {
+            const x = xoffset + octaveWidth / (steps - 1) * i;
+            const y = Math.pow(
+              this.fft.getEnergy(freq) / 255,
+              this.state.sharpness
+            ) *
+              rect.height *
+              this.state.gain;
+            p.vertex(x + rect.x, rect.height - y + rect.y);
+          };
+          band.forEach(drawVertex);
+          p.vertex(rect.x + xoffset + octaveWidth, rect.y + rect.height);
+          p.vertex(rect.x + xoffset, rect.y + rect.height);
+          p.endShape();
+          hue = u.rotateHue(hue, this.state.sweep);
+        });
+      }
 
       hoffset = u.rotateHue(hoffset, HSPEED);
 
-      if (p.keyIsDown(" ".charCodeAt()) || this.state.grid) {
-        p.stroke(255, 255, 255, 255 * 0.2);
-        p.strokeWeight(1);
-        [
-          "A",
-          "",
-          "B",
-          "C",
-          "",
-          "D",
-          "",
-          "E",
-          "F",
-          "",
-          "G",
-          ""
-        ].forEach((letter, i) => {
-          const angle = i / 12 * p.TAU;
-          p.line(
-            this.center.x,
-            this.center.y,
-            this.center.x + this.radius * Math.cos(angle),
-            this.center.y + this.radius * Math.sin(angle)
-          );
-
-          p.textSize(14);
-          p.textAlign(p.CENTER, p.CENTER);
-          p.fill(255, 255, 255, 255 * 0.2);
-          p.text(
-            letter,
-            this.center.x + this.radius * 1.1 * Math.cos(angle),
-            this.center.y + this.radius * 1.1 * Math.sin(angle)
-          );
-        });
-      }
+      // if (p.keyIsDown(" ".charCodeAt()) || this.state.grid) {
+      //   p.stroke(255, 255, 255, 255 * 0.2);
+      //   p.strokeWeight(1);
+      //   [
+      //     "A",
+      //     "",
+      //     "B",
+      //     "C",
+      //     "",
+      //     "D",
+      //     "",
+      //     "E",
+      //     "F",
+      //     "",
+      //     "G",
+      //     ""
+      //   ].forEach((letter, i) => {
+      //     const angle = i / 12 * p.TAU;
+      //     p.line(
+      //       this.center.x,
+      //       this.center.y,
+      //       this.center.x + this.radius * Math.cos(angle),
+      //       this.center.y + this.radius * Math.sin(angle)
+      //     );
+      //
+      //     p.textSize(14);
+      //     p.textAlign(p.CENTER, p.CENTER);
+      //     p.fill(255, 255, 255, 255 * 0.2);
+      //     p.text(
+      //       letter,
+      //       this.center.x + this.radius * 1.1 * Math.cos(angle),
+      //       this.center.y + this.radius * 1.1 * Math.sin(angle)
+      //     );
+      //   });
+      // }
     };
   };
 }
