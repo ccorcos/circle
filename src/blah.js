@@ -59,6 +59,12 @@ const styles = {
     padding: "4px 8px",
     marginTop: 8,
     textAlign: "center"
+  }),
+  link: css({
+    fontFamily: "sans-serif",
+    fontSize: 12,
+    textDecoration: "none",
+    fontWeight: "normal"
   })
 };
 
@@ -85,6 +91,32 @@ export default class Sketch extends React.PureComponent {
       radius: [0, 1],
       opacity: [0, 1]
     };
+    this.params = ["grid"];
+    if (window.location.search !== "") {
+      const saved = window.location.search
+        .slice(1)
+        .split("&")
+        .map(str => str.split("="))
+        .reduce(
+          (obj, [name, str]) => {
+            obj[name] = JSON.parse(str);
+            return obj;
+          },
+          {}
+        );
+      this.state = { ...this.state, ...saved };
+    }
+  }
+  componentWillUpdate(nextProps, nextState) {
+    const params = Object.keys(this.scrubbers)
+      .map(name => `${name}=${encodeURIComponent(nextState[name].toFixed(2))}`)
+      .concat(
+        this.params.map(
+          name => `${name}=${encodeURIComponent(nextState[name])}`
+        )
+      )
+      .join("&");
+    window.history.pushState({}, "circle", `?${params}`);
   }
   // save a reference to the root node
   rootRef = node => {
@@ -163,6 +195,13 @@ export default class Sketch extends React.PureComponent {
           {this.renderPausePlay()}
           {this.renderGridBool()}
           {Object.keys(this.scrubbers).map(this.renderScrubber)}
+          <a
+            href="https://github.com/ccorcos/circle"
+            target="_blank"
+            className={css(styles.link, styles.button)}
+          >
+            source code
+          </a>
         </div>
       </div>
     );

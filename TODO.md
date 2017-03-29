@@ -1,7 +1,4 @@
 - configs
-  - save config in url params
-  - collapse toolbar
-  - source code link
   - soundcloud vs microphone vs upload
   - visuals
     - flat fft
