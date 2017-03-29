@@ -3,8 +3,8 @@ import p5 from "p5";
 import "p5/lib/addons/p5.sound";
 import { css } from "glamor";
 import * as u from "./utils";
-import songUrl from "../assets/zedd-stay.m4a";
-// import songUrl from "../assets/nocturne-15.m4a";
+// the default song to play
+import zeddUrl from "../assets/zedd-stay.m4a";
 
 // some FFT documentation here:
 // https://p5js.org/reference/#/p5.FFT
@@ -42,7 +42,9 @@ const styles = {
     backgroundColor: "rgb(51, 51, 51)",
     display: "flex",
     flexDirection: "column",
-    justifyContent: "center"
+    justifyContent: "center",
+    padding: 4,
+    boxSizing: "border-box"
   }),
   show: css({
     transform: "translateX(-150px)",
@@ -59,7 +61,6 @@ const styles = {
     color: "white",
     cursor: "pointer",
     padding: "4px 8px",
-    marginTop: 8,
     textAlign: "center"
   }),
   link: css({
@@ -83,9 +84,46 @@ const styles = {
     display: "flex",
     justifyContent: "center",
     alignItems: "center"
+  }),
+  section: css({
+    borderStyle: "solid",
+    borderColor: "white",
+    borderWidth: 1,
+    borderRadius: 3,
+    color: "white",
+    textAlign: "center",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+    margin: "4px 0"
+  }),
+  title: css({
+    backgroundColor: "white",
+    color: "rgb(51, 51, 51)",
+    border: "none",
+    outline: "none",
+    cursor: "pointer",
+    padding: "4px 8px",
+    textAlign: "center"
   })
 };
 
+const Section = props => (
+  <div className={styles.section}>
+    <button className={styles.title} onClick={props.onClick}>
+      {props.title}
+    </button>
+    {props.children}
+  </div>
+);
+
+const Button = props => (
+  <button className={styles.button} onClick={props.onClick}>
+    {props.title}
+  </button>
+);
+
+// get the first audio file from a drop event
 const getFirstFile = event => {
   const dt = event.dataTransfer;
   if (dt.items) {
@@ -113,21 +151,30 @@ export default class Sketch extends React.PureComponent {
   constructor(props) {
     super(props);
     this.state = {
+      // playing a song or listening from the mic
       playing: true,
+      mode: "song",
+      // some scrubbable options for all visualizers
       sharpness: 3,
       gain: 1,
       hue: 240,
       sweep: -10,
-      radius: 0.8,
-      grid: false,
       opacity: 0.1,
+      // scrubbable options only valid for polar visualizer
+      radius: 0.8,
+      // boolean options
+      grid: false,
+      overlap: true,
+      // whatever field we're scrubbing on
       scrubbing: undefined,
-      moving: false,
+      // show the toolbar when the user is moving the mouse
+      showToolbar: false,
+      // user is hoving a file over the screen
       dropping: false,
-      mic: false,
-      type: "polar",
-      overlap: true
+      // the type of visualizer to show: 'polar' or 'linear'
+      view: "polar"
     };
+    // scrubbable values with min and max ranges
     this.scrubbers = {
       sharpness: [1, 10],
       gain: [0.6, 3],
@@ -136,7 +183,37 @@ export default class Sketch extends React.PureComponent {
       radius: [0, 1],
       opacity: [0, 1]
     };
-    this.params = ["grid", "mic", "type", "overlap"];
+    // params to save to the url
+    this.params = [
+      "grid",
+      "mode",
+      "view",
+      "overlap",
+      "sharpness",
+      "gain",
+      "hue",
+      "sweep",
+      "radius",
+      "opacity"
+    ];
+    this.loadUrlParams();
+  }
+  // load and save params to the url
+  componentWillUpdate(nextProps, nextState) {
+    this.saveUrlParams(nextState);
+  }
+  saveUrlParams(state) {
+    const params = this.params
+      .map(
+        name =>
+          typeof state[name] === "number"
+            ? `${name}=${encodeURIComponent(state[name].toFixed(2))}`
+            : `${name}=${encodeURIComponent(state[name])}`
+      )
+      .join("&");
+    window.history.pushState({}, "circle", `?${params}`);
+  }
+  loadUrlParams() {
     if (window.location.search !== "") {
       const saved = window.location.search
         .slice(1)
@@ -147,6 +224,7 @@ export default class Sketch extends React.PureComponent {
             try {
               obj[name] = JSON.parse(str);
             } catch (e) {
+              // load strings as they are
               obj[name] = str;
             }
             return obj;
@@ -156,96 +234,6 @@ export default class Sketch extends React.PureComponent {
       this.state = { ...this.state, ...saved };
     }
   }
-  componentWillUpdate(nextProps, nextState) {
-    const params = Object.keys(this.scrubbers)
-      .map(name => `${name}=${encodeURIComponent(nextState[name].toFixed(2))}`)
-      .concat(
-        this.params.map(
-          name => `${name}=${encodeURIComponent(nextState[name])}`
-        )
-      )
-      .join("&");
-    window.history.pushState({}, "circle", `?${params}`);
-  }
-  // save a reference to the root node
-  rootRef = node => {
-    this.root = node;
-  };
-  play = () => {
-    this.setState({ playing: true });
-  };
-  pause = () => {
-    this.setState({ playing: false });
-  };
-  renderPausePlay() {
-    if (this.state.mic) {
-      return false;
-    }
-    if (this.state.playing) {
-      return (
-        <button className={styles.button} onClick={this.pause}>pause</button>
-      );
-    } else {
-      return (
-        <button className={styles.button} onClick={this.play}>play</button>
-      );
-    }
-  }
-  renderScrubber = label => {
-    const setScubber = () => this.setState({ scrubbing: label });
-    if (this.state.scrubbing === label) {
-      return (
-        <button className={styles.button} key={label}>
-          {label} {this.state[label].toFixed(2)}
-        </button>
-      );
-    } else {
-      return (
-        <button className={styles.button} key={label} onClick={setScubber}>
-          {label} {this.state[label].toFixed(2)}
-        </button>
-      );
-    }
-  };
-  renderGridBool() {
-    const turnOn = () => this.setState({ grid: true });
-    const turnOff = () => this.setState({ grid: false });
-    if (this.state.grid) {
-      return (
-        <button className={styles.button} onClick={turnOff}>grid off</button>
-      );
-    } else {
-      return (
-        <button className={styles.button} onClick={turnOn}>grid on</button>
-      );
-    }
-  }
-  setPolar = () => {
-    this.setState({
-      type: "polar"
-    });
-  };
-  setLinear = () => {
-    this.setState({
-      type: "linear"
-    });
-  };
-  renderTypeSelect() {
-    if (this.state.type === "linear") {
-      return (
-        <button className={styles.button} onClick={this.setPolar}>polar</button>
-      );
-    } else {
-      return (
-        <button className={styles.button} onClick={this.setLinear}>
-          linear
-        </button>
-      );
-    }
-  }
-  stopScubbing = () => {
-    this.setState({ scrubbing: undefined });
-  };
   onDrop = event => {
     event.preventDefault();
     this.upload = getFirstFile(event);
@@ -254,7 +242,7 @@ export default class Sketch extends React.PureComponent {
         dropping: false,
         uploading: false,
         playing: true,
-        mic: false
+        mode: "song"
       },
       this.reload
     );
@@ -277,82 +265,163 @@ export default class Sketch extends React.PureComponent {
       return false;
     }
   }
-  setUploadingTrue = () => {
+  setSongMode = () => {
+    this.setState({ mode: "song", playing: true }, this.reload);
+  };
+  setMicMode = () => {
+    this.setState({ mode: "mic", playing: false }, this.reload);
+  };
+  pauseSong = () => {
+    this.setState({ playing: false });
+  };
+  playSong = () => {
+    this.setState({ playing: true });
+  };
+  showUploadOverlay = () => {
     this.setState({
       uploading: true
     });
   };
-  setUploadingFalse = () => {
+  hideUploadOverlay = () => {
     this.setState({
       uploading: false,
       dropping: false
     });
   };
-  renderUpload() {
-    if (this.state.mic) {
-      return false;
-    }
-    if (this.state.uploading || this.state.dropping) {
-      return (
-        <button onClick={this.setUploadingFalse} className={styles.button}>
-          cancel
-        </button>
-      );
+  renderModeSection() {
+    if (this.state.mode === "mic") {
+      return <Section title="mode: mic" onClick={this.setSongMode} />;
     } else {
+      const pauseButton = <Button onClick={this.pauseSong} title="pause" />;
+      const playButton = <Button onClick={this.playSong} title="play" />;
+      const uploadButton = (
+        <Button onClick={this.showUploadOverlay} title="upload" />
+      );
+      const cancelButton = (
+        <Button onClick={this.hideUploadOverlay} title="cancel" />
+      );
       return (
-        <button onClick={this.setUploadingTrue} className={styles.button}>
-          upload
-        </button>
+        <Section title="mode: song" onClick={this.setMicMode}>
+          {this.state.playing ? pauseButton : playButton}
+          {this.state.uploading || this.state.dropping
+            ? cancelButton
+            : uploadButton}
+        </Section>
       );
     }
   }
-  setMicTrue = () => {
-    this.setState({ mic: true, playing: false }, this.reload);
+  setPolarView = () => {
+    this.setState({ view: "polar" });
   };
-  setMicFalse = () => {
-    this.setState({ mic: false, playing: true }, this.reload);
+  setLinearView = () => {
+    this.setState({ view: "linear" });
   };
-  renderMicVsSong() {
-    if (this.state.mic) {
-      return (
-        <button onClick={this.setMicFalse} className={styles.button}>
-          use song
-        </button>
-      );
-    } else {
-      return (
-        <button onClick={this.setMicTrue} className={styles.button}>
-          use mic
-        </button>
-      );
-    }
-  }
   setOverlap = () => {
     this.setState({ overlap: true });
   };
   setSpread = () => {
     this.setState({ overlap: false });
   };
-  renderSpreadOverlap() {
-    if (this.state.overlap) {
+  showGrid = () => {
+    this.setState({ grid: true });
+  };
+  hideGrid = () => {
+    this.setState({ grid: false });
+  };
+  renderViewSection() {
+    const overlapButton = <Button title="overlap" onClick={this.setOverlap} />;
+    const spreadButton = <Button title="spread" onClick={this.setSpread} />;
+    const hideGridButton = <Button title="hide grid" onClick={this.hideGrid} />;
+    const showGridButton = <Button title="show grid" onClick={this.showGrid} />;
+
+    if (!this.setScrubbing) {
+      this.setScrubbing = {
+        sharpness: () => this.setState({ scrubbing: "sharpness" }),
+        gain: () => this.setState({ scrubbing: "gain" }),
+        hue: () => this.setState({ scrubbing: "hue" }),
+        sweep: () => this.setState({ scrubbing: "sweep" }),
+        radius: () => this.setState({ scrubbing: "radius" }),
+        opacity: () => this.setState({ scrubbing: "opacity" })
+      };
+    }
+
+    const sharpnessScrubber = (
+      <Button
+        title={`sharpness: ${this.state.sharpness.toFixed(2)}`}
+        onClick={this.setScrubbing.sharpness}
+      />
+    );
+    const gainScrubber = (
+      <Button
+        title={`gain: ${this.state.gain.toFixed(2)}`}
+        onClick={this.setScrubbing.gain}
+      />
+    );
+    const hueScrubber = (
+      <Button
+        title={`hue: ${this.state.hue.toFixed(2)}`}
+        onClick={this.setScrubbing.hue}
+      />
+    );
+    const sweepScrubber = (
+      <Button
+        title={`sweep: ${this.state.sweep.toFixed(2)}`}
+        onClick={this.setScrubbing.sweep}
+      />
+    );
+    const radiusScrubber = (
+      <Button
+        title={`radius: ${this.state.radius.toFixed(2)}`}
+        onClick={this.setScrubbing.radius}
+      />
+    );
+    const opacityScrubber = (
+      <Button
+        title={`opacity: ${this.state.opacity.toFixed(2)}`}
+        onClick={this.setScrubbing.opacity}
+      />
+    );
+
+    if (this.state.view === "polar") {
       return (
-        <button onClick={this.setSpread} className={styles.button}>
-          spread
-        </button>
+        <Section title="view: polar" onClick={this.setLinearView}>
+          {this.state.overlap ? spreadButton : overlapButton}
+          {this.state.grid ? hideGridButton : showGridButton}
+          {sharpnessScrubber}
+          {gainScrubber}
+          {hueScrubber}
+          {sweepScrubber}
+          {opacityScrubber}
+          {radiusScrubber}
+        </Section>
       );
     } else {
       return (
-        <button onClick={this.setOverlap} className={styles.button}>
-          overlap
-        </button>
+        <Section title="view: linear" onClick={this.setPolarView}>
+          {this.state.overlap ? spreadButton : overlapButton}
+          {this.state.grid ? hideGridButton : showGridButton}
+          {sharpnessScrubber}
+          {gainScrubber}
+          {hueScrubber}
+          {sweepScrubber}
+          {opacityScrubber}
+        </Section>
       );
     }
   }
+
+  stopScubbing = () => {
+    this.setState({ scrubbing: undefined });
+  };
+  // save a reference to the root node to render the canvas into
+  rootRef = node => {
+    this.root = node;
+  };
   render() {
     const style = {
       cursor: this.state.scrubbing
         ? "crosshair"
-        : this.state.moving ? "default" : "none"
+        : this.state.showToolbar ? "default" : "none"
     };
     return (
       <div
@@ -370,18 +439,14 @@ export default class Sketch extends React.PureComponent {
         <div
           className={css(
             styles.toolbar,
-            this.state.moving || this.state.scrubbing
+            this.state.showToolbar || this.state.scrubbing
               ? styles.show
-              : styles.hide
+              : // : styles.hide
+                styles.show
           )}
         >
-          {this.renderMicVsSong()}
-          {this.renderPausePlay()}
-          {this.renderUpload()}
-          {this.renderTypeSelect()}
-          {this.renderSpreadOverlap()}
-          {this.renderGridBool()}
-          {Object.keys(this.scrubbers).map(this.renderScrubber)}
+          {this.renderModeSection()}
+          {this.renderViewSection()}
           <a
             href="https://github.com/ccorcos/circle"
             target="_blank"
@@ -420,16 +485,16 @@ export default class Sketch extends React.PureComponent {
   startMoving() {
     window.clearTimeout(this.movingTimerId);
     this.movingTimerId = undefined;
-    if (!this.state.moving) {
-      this.setState({ moving: true });
+    if (!this.state.showToolbar) {
+      this.setState({ showToolbar: true });
     }
   }
   stopMoving() {
     if (this.movingTimerId === undefined) {
       this.movingTimerId = window.setTimeout(
         () => {
-          if (this.state.moving) {
-            this.setState({ moving: false });
+          if (this.state.showToolbar) {
+            this.setState({ showToolbar: false });
           }
         },
         2500
@@ -455,8 +520,8 @@ export default class Sketch extends React.PureComponent {
     const notes = ["A", "", "B", "C", "", "D", "", "E", "F", "", "G", ""];
 
     p.preload = () => {
-      if (!this.state.mic) {
-        this.song = p.loadSound(this.upload || songUrl);
+      if (this.state.mode !== "mic") {
+        this.song = p.loadSound(this.upload || zeddUrl);
       }
     };
 
@@ -464,7 +529,7 @@ export default class Sketch extends React.PureComponent {
       this.canvas = p.createCanvas(this.width, this.height);
       p.noFill();
 
-      if (this.state.mic) {
+      if (this.state.mode === "mic") {
         this.mic = new p5.AudioIn();
         this.mic.start();
         this.fft = new p5.FFT();
@@ -487,9 +552,9 @@ export default class Sketch extends React.PureComponent {
     const computeMove = ([x1, y1]) => {
       const [x2, y2] = xy;
       const d = Math.abs(x1 - x2) + Math.abs(y1 - y2);
-      if (d >= 1 && !this.state.moving) {
+      if (d >= 1 && !this.state.showToolbar) {
         this.startMoving();
-      } else if (d < 1 && this.state.moving) {
+      } else if (d < 1 && this.state.showToolbar) {
         this.stopMoving();
       }
       xy = [x1, y1];
@@ -535,7 +600,7 @@ export default class Sketch extends React.PureComponent {
       // padding
       const padding = {
         x: toolbarWidth,
-        y: this.state.type === "linear" ? (this.height - 400) / 2 : 50
+        y: this.state.view === "linear" ? (this.height - 400) / 2 : 50
       };
 
       const rect = {
@@ -545,7 +610,7 @@ export default class Sketch extends React.PureComponent {
         height: this.height - padding.y * 2
       };
 
-      if (this.state.type === "polar") {
+      if (this.state.view === "polar") {
         const octaveEdge = this.state.overlap
           ? this.edge
           : rect.width / octaves;
@@ -622,7 +687,7 @@ export default class Sketch extends React.PureComponent {
           p.endShape();
           hue = u.rotateHue(hue, this.state.sweep);
         });
-      } else if (this.state.type === "linear") {
+      } else if (this.state.view === "linear") {
         const octaveWidth = this.state.overlap
           ? rect.width
           : rect.width / octaves;
@@ -683,29 +748,6 @@ export default class Sketch extends React.PureComponent {
       }
 
       hoffset = u.rotateHue(hoffset, HSPEED);
-
-      if (showGrid) {
-        // p.stroke(255, 255, 255, 255 * 0.2);
-        // p.strokeWeight(1);
-        // notes.forEach((letter, i) => {
-        //   const angle = i / 12 * p.TAU;
-        //   p.line(
-        //     this.center.x,
-        //     this.center.y,
-        //     this.center.x + this.radius * Math.cos(angle),
-        //     this.center.y + this.radius * Math.sin(angle)
-        //   );
-        //
-        //   p.textSize(14);
-        //   p.textAlign(p.CENTER, p.CENTER);
-        //   p.fill(255, 255, 255, 255 * 0.2);
-        //   p.text(
-        //     letter,
-        //     this.center.x + this.radius * 1.1 * Math.cos(angle),
-        //     this.center.y + this.radius * 1.1 * Math.sin(angle)
-        //   );
-        // });
-      }
     };
   };
 }
