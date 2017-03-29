@@ -1,5 +1,0 @@
-- configs
-  - visuals
-    - flat fft
-    - circle fft
-  - p5.js downsampling
