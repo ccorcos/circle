@@ -18,6 +18,8 @@ css.global("html, body", {
   overflow: "hidden"
 });
 
+const toolbarWidth = 150;
+
 const styles = {
   layout: css({
     position: "absolute",
@@ -36,7 +38,7 @@ const styles = {
     left: "100%",
     top: 0,
     bottom: 0,
-    width: 150,
+    width: toolbarWidth,
     backgroundColor: "rgb(51, 51, 51)",
     display: "flex",
     flexDirection: "column",
@@ -450,6 +452,8 @@ export default class Sketch extends React.PureComponent {
       });
     });
 
+    const notes = ["A", "", "B", "C", "", "D", "", "E", "F", "", "G", ""];
+
     p.preload = () => {
       if (!this.state.mic) {
         this.song = p.loadSound(this.upload || songUrl);
@@ -494,6 +498,8 @@ export default class Sketch extends React.PureComponent {
     p.draw = () => {
       computeMove([p.mouseX, p.mouseY]);
 
+      const showGrid = p.keyIsDown(" ".charCodeAt()) || this.state.grid;
+
       if (this.state.playing && !this.song.isPlaying()) {
         this.song.play();
       }
@@ -506,7 +512,10 @@ export default class Sketch extends React.PureComponent {
         const [min, max] = this.scrubbers[name];
         if (this.state.scrubbing === name) {
           this.setState({
-            [name]: p.map(p.mouseX, 0, this.width, min, max)
+            [name]: Math.min(
+              p.map(p.mouseX, 0, this.width - toolbarWidth, min, max),
+              max
+            )
           });
         }
       });
@@ -525,7 +534,7 @@ export default class Sketch extends React.PureComponent {
 
       // padding
       const padding = {
-        x: 150,
+        x: toolbarWidth,
         y: this.state.type === "linear" ? (this.height - 400) / 2 : 50
       };
 
@@ -545,22 +554,52 @@ export default class Sketch extends React.PureComponent {
 
         const innerRadius = octaveEdge / 6 * this.state.radius;
 
-        // this.center = {};
-        // this.center.x = this.width / 2;
-        // this.center.y = this.height / 2;
+        let drawPolarGrid = showGrid;
 
         bands.forEach((band, j) => {
-          p.fill(
-            p.color(
-              `hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`
-            )
-          );
           const center = {
             x: this.state.overlap
               ? rect.x + rect.width / 2
               : rect.x + octaveEdge * (j + 0.5),
             y: rect.y + rect.height / 2
           };
+
+          if (drawPolarGrid) {
+            if (this.state.overlap) {
+              drawPolarGrid = false;
+            }
+            notes.forEach((letter, i) => {
+              p.stroke(255, 255, 255, 255 * 0.2);
+              p.strokeWeight(1);
+              const angle = i / 12 * p.TAU;
+              p.line(
+                center.x,
+                center.y,
+                center.x + octaveRadius * Math.cos(angle),
+                center.y + octaveRadius * Math.sin(angle)
+              );
+
+              if (this.state.overlap) {
+                p.textSize(14);
+              } else {
+                p.textSize(8);
+              }
+              p.textAlign(p.CENTER, p.CENTER);
+              p.fill(255, 255, 255, 255 * 0.2);
+              p.text(
+                letter,
+                center.x + octaveRadius * 1.1 * Math.cos(angle),
+                center.y + octaveRadius * 1.1 * Math.sin(angle)
+              );
+            });
+          }
+
+          p.strokeWeight(0);
+          p.fill(
+            p.color(
+              `hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`
+            )
+          );
 
           const drawVertex = (freq, i) => {
             const radius = Math.pow(
@@ -588,7 +627,35 @@ export default class Sketch extends React.PureComponent {
           ? rect.width
           : rect.width / octaves;
 
+        let drawLinearGrid = showGrid;
         bands.forEach((band, j) => {
+          if (drawLinearGrid) {
+            if (this.state.overlap) {
+              drawLinearGrid = false;
+            }
+            notes.forEach((letter, i) => {
+              p.stroke(255, 255, 255, 255 * 0.2);
+              p.strokeWeight(1);
+
+              const xoffset = this.state.overlap ? 0 : octaveWidth * j;
+              const x = rect.x + xoffset + octaveWidth / 11 * i;
+              const bottom = rect.y + rect.height;
+              const top = rect.y;
+              const above = rect.y - 0.04 * rect.height;
+
+              p.line(x, bottom, x, top);
+
+              if (this.state.overlap) {
+                p.textSize(14);
+              } else {
+                p.textSize(8);
+              }
+              p.textAlign(p.CENTER, p.CENTER);
+              p.fill(255, 255, 255, 255 * 0.2);
+              p.text(letter, x, above);
+            });
+          }
+
           p.fill(
             p.color(
               `hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`
@@ -617,41 +684,28 @@ export default class Sketch extends React.PureComponent {
 
       hoffset = u.rotateHue(hoffset, HSPEED);
 
-      // if (p.keyIsDown(" ".charCodeAt()) || this.state.grid) {
-      //   p.stroke(255, 255, 255, 255 * 0.2);
-      //   p.strokeWeight(1);
-      //   [
-      //     "A",
-      //     "",
-      //     "B",
-      //     "C",
-      //     "",
-      //     "D",
-      //     "",
-      //     "E",
-      //     "F",
-      //     "",
-      //     "G",
-      //     ""
-      //   ].forEach((letter, i) => {
-      //     const angle = i / 12 * p.TAU;
-      //     p.line(
-      //       this.center.x,
-      //       this.center.y,
-      //       this.center.x + this.radius * Math.cos(angle),
-      //       this.center.y + this.radius * Math.sin(angle)
-      //     );
-      //
-      //     p.textSize(14);
-      //     p.textAlign(p.CENTER, p.CENTER);
-      //     p.fill(255, 255, 255, 255 * 0.2);
-      //     p.text(
-      //       letter,
-      //       this.center.x + this.radius * 1.1 * Math.cos(angle),
-      //       this.center.y + this.radius * 1.1 * Math.sin(angle)
-      //     );
-      //   });
-      // }
+      if (showGrid) {
+        // p.stroke(255, 255, 255, 255 * 0.2);
+        // p.strokeWeight(1);
+        // notes.forEach((letter, i) => {
+        //   const angle = i / 12 * p.TAU;
+        //   p.line(
+        //     this.center.x,
+        //     this.center.y,
+        //     this.center.x + this.radius * Math.cos(angle),
+        //     this.center.y + this.radius * Math.sin(angle)
+        //   );
+        //
+        //   p.textSize(14);
+        //   p.textAlign(p.CENTER, p.CENTER);
+        //   p.fill(255, 255, 255, 255 * 0.2);
+        //   p.text(
+        //     letter,
+        //     this.center.x + this.radius * 1.1 * Math.cos(angle),
+        //     this.center.y + this.radius * 1.1 * Math.sin(angle)
+        //   );
+        // });
+      }
     };
   };
 }
