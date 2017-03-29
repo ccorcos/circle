@@ -37,11 +37,32 @@ export default class Sketch extends React.PureComponent {
   saveRoot = node => {
     this.root = node;
   };
+  onPlay = () => {
+    this.song.play();
+    this.forceUpdate();
+  };
+  onPause = () => {
+    this.song.pause();
+    this.forceUpdate();
+  };
+  renderPausePlay() {
+    if (this.song) {
+      if (this.song.isPlaying()) {
+        return <button onClick={this.onPause}>pause</button>;
+      } else {
+        return <button onClick={this.onPlay}>play</button>;
+      }
+    } else {
+      return false;
+    }
+  }
   render() {
     return (
       <div className={styles.layout}>
         <div className={styles.content} ref={this.saveRoot} />
-        <div className={styles.toolbar} />
+        <div className={styles.toolbar}>
+          {this.renderPausePlay()}
+        </div>
       </div>
     );
   }
@@ -101,6 +122,7 @@ export default class Sketch extends React.PureComponent {
       this.song.setVolume(1.0);
       this.song.playMode("restart");
       this.song.play();
+      this.forceUpdate();
       this.fft = new p5.FFT();
       this.fft.setInput(this.song);
     };
