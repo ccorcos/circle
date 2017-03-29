@@ -1,0 +1,13 @@
+- configs
+  - soundcloud vs microphone vs upload
+  - play / pause music
+  - mousex select options
+    - color
+    - sweep amount
+    - radius size
+    - sharpness
+  - other options
+    - show grid
+  - visuals
+    - flat fft
+    - circle fft
