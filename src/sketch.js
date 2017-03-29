@@ -6,10 +6,6 @@ import * as u from "./utils";
 // the default song to play
 import zeddUrl from "../assets/zedd-stay.m4a";
 
-// some FFT documentation here:
-// https://p5js.org/reference/#/p5.FFT
-// https://p5js.org/reference/#/p5.FFT/getEnergy
-
 css.global("html, body", {
   padding: 0,
   margin: 0,
@@ -19,6 +15,7 @@ css.global("html, body", {
 });
 
 const toolbarWidth = 150;
+const linearViewHeight = 400;
 
 const styles = {
   layout: css({
@@ -152,8 +149,12 @@ export default class Sketch extends React.PureComponent {
     super(props);
     this.state = {
       // playing a song or listening from the mic
-      playing: true,
       mode: "song",
+      // the type of visualizer to show: 'polar' or 'linear'
+      view: "polar",
+      // whether a song is playing
+      playing: true,
+      uploading: false,
       // some scrubbable options for all visualizers
       sharpness: 3,
       gain: 1,
@@ -170,9 +171,7 @@ export default class Sketch extends React.PureComponent {
       // show the toolbar when the user is moving the mouse
       showToolbar: false,
       // user is hoving a file over the screen
-      dropping: false,
-      // the type of visualizer to show: 'polar' or 'linear'
-      view: "polar"
+      dropping: false
     };
     // scrubbable values with min and max ranges
     this.scrubbers = {
@@ -232,37 +231,6 @@ export default class Sketch extends React.PureComponent {
           {}
         );
       this.state = { ...this.state, ...saved };
-    }
-  }
-  onDrop = event => {
-    event.preventDefault();
-    this.upload = getFirstFile(event);
-    this.setState(
-      {
-        dropping: false,
-        uploading: false,
-        playing: true,
-        mode: "song"
-      },
-      this.reload
-    );
-  };
-  onDragOver = event => {
-    // prevent default behavior
-    event.preventDefault();
-    this.setState({
-      dropping: true
-    });
-  };
-  renderDropZone() {
-    if (this.state.dropping || this.state.uploading) {
-      return (
-        <div className={styles.dropping}>
-          Drop a music file
-        </div>
-      );
-    } else {
-      return false;
     }
   }
   setSongMode = () => {
@@ -409,13 +377,43 @@ export default class Sketch extends React.PureComponent {
       );
     }
   }
-
-  stopScubbing = () => {
-    this.setState({ scrubbing: undefined });
+  onDrop = event => {
+    event.preventDefault();
+    this.upload = getFirstFile(event);
+    this.setState(
+      {
+        dropping: false,
+        uploading: false,
+        playing: true,
+        mode: "song"
+      },
+      this.reload
+    );
   };
+  onDragOver = event => {
+    event.preventDefault();
+    this.setState({
+      dropping: true
+    });
+  };
+  renderDropZone() {
+    if (this.state.dropping || this.state.uploading) {
+      return (
+        <div className={styles.dropping}>
+          Drop a music file
+        </div>
+      );
+    } else {
+      return false;
+    }
+  }
+
   // save a reference to the root node to render the canvas into
   rootRef = node => {
     this.root = node;
+  };
+  stopScubbing = () => {
+    this.setState({ scrubbing: undefined });
   };
   render() {
     const style = {
@@ -441,8 +439,7 @@ export default class Sketch extends React.PureComponent {
             styles.toolbar,
             this.state.showToolbar || this.state.scrubbing
               ? styles.show
-              : // : styles.hide
-                styles.show
+              : styles.hide
           )}
         >
           {this.renderModeSection()}
@@ -459,11 +456,9 @@ export default class Sketch extends React.PureComponent {
     );
   }
   componentDidMount() {
-    this.deriveSizes();
     new p5(this.sketch, this.root);
     window.onresize = () => {
-      this.deriveSizes();
-      this.canvas.resize(this.width, this.height);
+      this.canvas.resize(window.innerWidth, window.innerHeight);
     };
     document.body.addEventListener("mouseleave", () => {
       this.setState({
@@ -471,17 +466,12 @@ export default class Sketch extends React.PureComponent {
       });
     });
   }
+  // reload the entire sketch
   reload = () => {
     this.p.remove();
     new p5(this.sketch, this.root);
   };
-  deriveSizes() {
-    // size of the canvas
-    this.height = window.innerHeight;
-    this.width = window.innerWidth;
-    // edge of a square in the middle
-    this.edge = Math.min(this.height, this.width);
-  }
+  // show the toolbar based on mouse movement
   startMoving() {
     window.clearTimeout(this.movingTimerId);
     this.movingTimerId = undefined;
@@ -502,7 +492,9 @@ export default class Sketch extends React.PureComponent {
     }
   }
   sketch = p => {
+    // save the p so we can remove it when we reload
     this.p = p;
+
     // A0 is 27.5Hz which is below C1
     const fmin = 27.5;
     // 7 octaves on a piano, lets use 8
@@ -519,6 +511,21 @@ export default class Sketch extends React.PureComponent {
 
     const notes = ["A", "", "B", "C", "", "D", "", "E", "F", "", "G", ""];
 
+    // previous mouse position
+    let xy = [0, 0];
+
+    // tell the component if we've moved the mouse
+    const computeMove = ([x1, y1]) => {
+      const [x2, y2] = xy;
+      const d = Math.abs(x1 - x2) + Math.abs(y1 - y2);
+      if (d >= 1 && !this.state.showToolbar) {
+        this.startMoving();
+      } else if (d < 1 && this.state.showToolbar) {
+        this.stopMoving();
+      }
+      xy = [x1, y1];
+    };
+
     p.preload = () => {
       if (this.state.mode !== "mic") {
         this.song = p.loadSound(this.upload || zeddUrl);
@@ -526,8 +533,7 @@ export default class Sketch extends React.PureComponent {
     };
 
     p.setup = () => {
-      this.canvas = p.createCanvas(this.width, this.height);
-      p.noFill();
+      this.canvas = p.createCanvas(window.innerWidth, window.innerHeight);
 
       if (this.state.mode === "mic") {
         this.mic = new p5.AudioIn();
@@ -544,83 +550,78 @@ export default class Sketch extends React.PureComponent {
       }
     };
 
-    // hue offset
-    let hoffset = 0;
-
-    let xy = [0, 0];
-
-    const computeMove = ([x1, y1]) => {
-      const [x2, y2] = xy;
-      const d = Math.abs(x1 - x2) + Math.abs(y1 - y2);
-      if (d >= 1 && !this.state.showToolbar) {
-        this.startMoving();
-      } else if (d < 1 && this.state.showToolbar) {
-        this.stopMoving();
-      }
-      xy = [x1, y1];
-    };
-
     p.draw = () => {
       computeMove([p.mouseX, p.mouseY]);
 
+      // window height
+      const height = window.innerHeight;
+      const width = window.innerWidth;
+      // edge of a square in the middle
+      const edge = Math.min(height, width);
+
+      // you can always hold space to show the grid
       const showGrid = p.keyIsDown(" ".charCodeAt()) || this.state.grid;
 
+      // use the state to declaratively pause and play
       if (this.state.playing && !this.song.isPlaying()) {
         this.song.play();
-      }
-
-      if (!this.state.playing && !this.song.isPaused()) {
+      } else if (!this.state.playing && !this.song.isPaused()) {
         this.song.pause();
       }
 
+      // set the state of the scrubber if we're scrubbing
       Object.keys(this.scrubbers).forEach(name => {
         const [min, max] = this.scrubbers[name];
         if (this.state.scrubbing === name) {
           this.setState({
             [name]: Math.min(
-              p.map(p.mouseX, 0, this.width - toolbarWidth, min, max),
+              p.map(p.mouseX, 0, width - toolbarWidth, min, max),
               max
             )
           });
         }
       });
 
+      // some FFT documentation here:
+      // https://p5js.org/reference/#/p5.FFT
+      // https://p5js.org/reference/#/p5.FFT/getEnergy
+      this.fft.analyze();
+
+      // setup the background
       p.background(51);
       p.noFill();
+
+      // no stroke
       p.stroke(255, 255, 255, 255 * 1.0);
       p.strokeWeight(0);
 
-      this.fft.analyze();
-
-      // HSL color sweep
-      let HSPEED = 0;
-
-      let hue = u.rotateHue(this.state.hue, hoffset);
+      // sweep hue
+      let hue = this.state.hue;
 
       // padding
       const padding = {
         x: toolbarWidth,
-        y: this.state.view === "linear" ? (this.height - 400) / 2 : 50
+        y: this.state.view === "linear" ? (height - linearViewHeight) / 2 : 50
       };
 
       const rect = {
         x: padding.x,
         y: padding.y,
-        width: this.width - padding.x * 2,
-        height: this.height - padding.y * 2
+        width: width - padding.x * 2,
+        height: height - padding.y * 2
       };
 
       if (this.state.view === "polar") {
-        const octaveEdge = this.state.overlap
-          ? this.edge
-          : rect.width / octaves;
-
+        // edge of the square bounding the circle
+        const octaveEdge = this.state.overlap ? edge : rect.width / octaves;
+        // leave some room to the ourside of the circle
         const octaveRadius = octaveEdge / 3;
-
+        // compure the inner radius to the circle
         const innerRadius = octaveEdge / 6 * this.state.radius;
-
+        // we only want to draw one grid if we're overlayed
         let drawPolarGrid = showGrid;
 
+        // draw each octave
         bands.forEach((band, j) => {
           const center = {
             x: this.state.overlap
@@ -629,10 +630,13 @@ export default class Sketch extends React.PureComponent {
             y: rect.y + rect.height / 2
           };
 
+          // draw the grid
           if (drawPolarGrid) {
             if (this.state.overlap) {
               drawPolarGrid = false;
             }
+
+            // draw lines at an angle from the center
             notes.forEach((letter, i) => {
               p.stroke(255, 255, 255, 255 * 0.2);
               p.strokeWeight(1);
@@ -644,6 +648,7 @@ export default class Sketch extends React.PureComponent {
                 center.y + octaveRadius * Math.sin(angle)
               );
 
+              // draw the note labels
               if (this.state.overlap) {
                 p.textSize(14);
               } else {
@@ -659,6 +664,7 @@ export default class Sketch extends React.PureComponent {
             });
           }
 
+          // draw the circle
           p.strokeWeight(0);
           p.fill(
             p.color(
@@ -666,6 +672,7 @@ export default class Sketch extends React.PureComponent {
             )
           );
 
+          // draw a single frequency vertex using polar coordinates
           const drawVertex = (freq, i) => {
             const radius = Math.pow(
               this.fft.getEnergy(freq) / 255,
@@ -681,23 +688,34 @@ export default class Sketch extends React.PureComponent {
             );
           };
 
+          // draw the shape
           p.beginShape();
           band.forEach(drawVertex);
+          // draw the first vertex again to complete the shape
           drawVertex(band[0], 0);
           p.endShape();
+
+          // rotate the hue for the next octave
           hue = u.rotateHue(hue, this.state.sweep);
         });
       } else if (this.state.view === "linear") {
+        // width of the octave
         const octaveWidth = this.state.overlap
           ? rect.width
           : rect.width / octaves;
 
+        // if the view if overlapped, we only want to draw the grid once
         let drawLinearGrid = showGrid;
+
+        // draw each octave
         bands.forEach((band, j) => {
+          // draw the grid
           if (drawLinearGrid) {
             if (this.state.overlap) {
               drawLinearGrid = false;
             }
+
+            // draw a line for each note
             notes.forEach((letter, i) => {
               p.stroke(255, 255, 255, 255 * 0.2);
               p.strokeWeight(1);
@@ -707,7 +725,6 @@ export default class Sketch extends React.PureComponent {
               const bottom = rect.y + rect.height;
               const top = rect.y;
               const above = rect.y - 0.04 * rect.height;
-
               p.line(x, bottom, x, top);
 
               if (this.state.overlap) {
@@ -721,6 +738,7 @@ export default class Sketch extends React.PureComponent {
             });
           }
 
+          // draw the octave
           p.fill(
             p.color(
               `hsla(${Math.round(hue)}, 100%, 50%, ${this.state.opacity})`
@@ -728,8 +746,10 @@ export default class Sketch extends React.PureComponent {
           );
           p.beginShape();
           const xoffset = this.state.overlap ? 0 : octaveWidth * j;
+          // create a vertex at the bottom left
           p.vertex(rect.x + xoffset, rect.y + rect.height);
-          const drawVertex = (freq, i) => {
+          // draw each of the frequencies
+          band.forEach((freq, i) => {
             const x = xoffset + octaveWidth / (steps - 1) * i;
             const y = Math.pow(
               this.fft.getEnergy(freq) / 255,
@@ -738,16 +758,16 @@ export default class Sketch extends React.PureComponent {
               rect.height *
               this.state.gain;
             p.vertex(x + rect.x, rect.height - y + rect.y);
-          };
-          band.forEach(drawVertex);
+          });
+          // draw a vertex at the bottom right
           p.vertex(rect.x + xoffset + octaveWidth, rect.y + rect.height);
+          // draw a vertex at the bottom left again to complete the shape
           p.vertex(rect.x + xoffset, rect.y + rect.height);
           p.endShape();
+          // rotate the hue for the next octave
           hue = u.rotateHue(hue, this.state.sweep);
         });
       }
-
-      hoffset = u.rotateHue(hoffset, HSPEED);
     };
   };
 }
