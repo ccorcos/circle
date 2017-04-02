@@ -36,7 +36,7 @@ const styles = {
     top: 0,
     bottom: 0,
     width: toolbarWidth,
-    backgroundColor: "rgb(51, 51, 51)",
+    backgroundColor: "rgba(51, 51, 51, 0)",
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
@@ -171,7 +171,8 @@ export default class Sketch extends React.PureComponent {
       // show the toolbar when the user is moving the mouse
       showToolbar: false,
       // user is hoving a file over the screen
-      dropping: false
+      dropping: false,
+      fullscreen: false
     };
     // scrubbable values with min and max ranges
     this.scrubbers = {
@@ -415,6 +416,17 @@ export default class Sketch extends React.PureComponent {
   stopScubbing = () => {
     this.setState({ scrubbing: undefined });
   };
+
+  setFullScreen = () => {
+    this.setState({ fullscreen: true });
+    const el = document.documentElement,
+      rfs = el.requestFullscreen ||
+        el.webkitRequestFullScreen ||
+        el.mozRequestFullScreen ||
+        el.msRequestFullscreen;
+
+    rfs.call(el);
+  };
   render() {
     const style = {
       cursor: this.state.scrubbing
@@ -444,6 +456,7 @@ export default class Sketch extends React.PureComponent {
         >
           {this.renderModeSection()}
           {this.renderViewSection()}
+          <Button title="fullscreen" onClick={this.setFullScreen} />
           <a
             href="https://github.com/ccorcos/circle"
             target="_blank"
@@ -600,8 +613,10 @@ export default class Sketch extends React.PureComponent {
 
       // padding
       const padding = {
-        x: toolbarWidth,
-        y: this.state.view === "linear" ? (height - linearViewHeight) / 2 : 50
+        x: this.state.fullscreen ? 0 : toolbarWidth,
+        y: this.state.fullscreen
+          ? 0
+          : this.state.view === "linear" ? (height - linearViewHeight) / 2 : 50
       };
 
       const rect = {
