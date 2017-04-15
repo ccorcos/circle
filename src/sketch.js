@@ -197,6 +197,7 @@ export default class Sketch extends React.PureComponent {
       "opacity"
     ];
     this.loadUrlParams();
+    this.setupFullScreenListener();
   }
   // load and save params to the url
   componentWillUpdate(nextProps, nextState) {
@@ -416,9 +417,45 @@ export default class Sketch extends React.PureComponent {
   stopScubbing = () => {
     this.setState({ scrubbing: undefined });
   };
-
+  setupFullScreenListener() {
+    document.addEventListener(
+      "fullscreenchange",
+      this.onFullScreenChange,
+      false
+    );
+    document.addEventListener(
+      "webkitfullscreenchange",
+      this.onFullScreenChange,
+      false
+    );
+    document.addEventListener(
+      "mozfullscreenchange",
+      this.onFullScreenChange,
+      false
+    );
+    document.addEventListener(
+      "msfullscreenchange",
+      this.onFullScreenChange,
+      false
+    );
+  }
+  onFullScreenChange = () => {
+    if (
+      document.fullScreenElement ||
+      document.fullScreenElement ||
+      document.webkitFullScreenElement ||
+      document.webkitFullscreenElement ||
+      document.mozFullScreenElement ||
+      document.mozFullscreenElement ||
+      document.msFullScreenElement ||
+      document.msFullscreenElement
+    ) {
+      this.setState({ fullscreen: true });
+    } else {
+      this.setState({ fullscreen: false });
+    }
+  };
   setFullScreen = () => {
-    this.setState({ fullscreen: true });
     const el = document.documentElement,
       rfs = el.requestFullscreen ||
         el.webkitRequestFullScreen ||
