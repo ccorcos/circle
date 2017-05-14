@@ -1,3 +1,3 @@
-# Circle [[demo](http://www.chetcorcos.com/circle)]
+# Circle [[demo](https://ccorcos.github.io/circle/)]
 
-Just a fun little demo built with [p5.js](http://p5js.org/).
+An audio visualizer built with [p5.js](http://p5js.org/).
