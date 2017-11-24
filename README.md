@@ -17,7 +17,13 @@ After playing around with various parameters, I realized that this was a pretty 
 - you can change the color scheme&mdash;the colors are deterines by anchoring a hue and sweeping through HSL for each octave.
 - you can edit the opacity of each layer.
 
-Here are some fun examples for you.
+One thing that can use improvement is the FFT granularity. I'm using the 2048 bit FFT out of the box, I think with a custom [script processor node](https://developer.mozilla.org/en-US/docs/Web/API/ScriptProcessorNode) you could probably build your own FFT that has much better granularity.
+
+Here are some fun examples for you&mdash;click on the images to open up the visualizers with those presets.
 
 [![](./assets/logo.png)](https://ccorcos.github.io/circle/?grid=true&mode=song&view=polar&overlap=true&sharpness=6.02&gain=1.00&hue=254.23&sweep=-28.53&radius=0.37&opacity=0.10)
+
+[![](./assets/linear-spread.png)](https://ccorcos.github.io/circle/?grid=true&mode=song&view=linear&overlap=false&sharpness=5.01&gain=1.00&hue=254.23&sweep=-36.65&radius=0.37&opacity=0.60)
+
+[![](./assets/linear.png)](https://ccorcos.github.io/circle/?grid=false&mode=song&view=linear&overlap=true&sharpness=3.13&gain=1.00&hue=254.23&sweep=-36.65&radius=0.37&opacity=0.60)
 
